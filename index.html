@@ -145,6 +145,8 @@
   .b-jur{background:var(--ok-soft);color:var(--ok)}
   .b-nres{background:var(--c-flag-bg);color:var(--c-flag)}
   .b-ip{background:var(--c-type-bg);color:var(--c-type)}
+  .b-res{background:var(--accent-soft);color:var(--accent)}
+  .b-nonres{background:var(--warn-soft);color:var(--warn)}
 
   /* registry (live data from stat.gov.kz + e-Qazyna) */
   .registry{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:none}
@@ -309,7 +311,7 @@ function controlDigit(s11){
 }
 
 const CENTURY={1:1800,2:1800,3:1900,4:1900,5:2000,6:2000,7:2100,8:2100};
-const RU_MONTH=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const RU_MONTH=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
 const pad=n=>String(n).padStart(2,'0');
 const fmtDate=(y,m,d)=>`${pad(d)}.${pad(m)}.${y}`;
 
@@ -376,7 +378,9 @@ function decode(num){
     }
     if(o.len>=4){
       const yy=d[0]*10+d[1], mm=d[2]*10+d[3];
-      o.reg={yy,mm,monthOk:(mm>=1&&mm<=12)};
+      const ty=new Date().getFullYear();
+      const year=(2000+yy)>ty?1900+yy:2000+yy;   // в БИН нет цифры века: 20xx, иначе 19xx
+      o.reg={yy,mm,year,monthOk:(mm>=1&&mm<=12)};
     }
   }
   return o;
@@ -445,7 +449,7 @@ function renderDecode(o){
 
   /* Организация */
   if(o.isBIN){
-    if(o.residency) push('Резидентство', o.residency, null);
+    if(o.residency) push('Резидентство', `<span class="badge ${o.entityType==='jur_res'?'b-res':'b-nonres'}">${o.residency}</span>`, null);
     if(o.len>=6){
       if(!o.orgStatusKnown) push('Признак','<span class="muted-v">неизвестный код '+o.sixth+'</span>','bad');
       else{
@@ -455,12 +459,12 @@ function renderDecode(o){
       }
     }
     if(o.reg){
-      if(!o.reg.monthOk) push('Дата регистрации','<span class="muted-v">некорректный месяц</span>','bad');
+      if(!o.reg.monthOk) push('Дата основания','<span class="muted-v">некорректный месяц</span>','bad');
       else{
-        const rs=`${RU_MONTH[o.reg.mm-1]} ’${pad(o.reg.yy)}`;
+        const rs=`${RU_MONTH[o.reg.mm-1]} ${o.reg.year}`;
         let st=null,note='';
         if(declR){ const rp=declR.split('-'); const ry=Number(rp[0]),rm=Number(rp[1]); if((ry%100)===o.reg.yy&&rm===o.reg.mm) st='ok'; else { st='warn'; note='анкета: '+pad(rm)+'.'+ry; } }
-        push('Дата регистрации', `<span class="mono-v">${rs}</span>`, st, note);
+        push('Дата основания', rs, st, note);
       }
     }
   }
