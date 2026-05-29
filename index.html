@@ -661,7 +661,10 @@ function renderRegistry(){
   };
 
   push('Наименование', v(sgD&&sgD.name, wkA&&wkA.name, live));
-  push('Гос. участие', govBadge(wk));
+  // Гос. участие — только для юрлиц/ИП. Для обычного физлица не показываем
+  // (ИИН считается ИП, только если найден в stat.gov.kz → sg.state==='ok').
+  const isJurOrIp = Number(_reg.bin[4]) > 3 || sg.state==='ok';
+  if(isJurOrIp) push('Гос. участие', govBadge(wk));
   if(sgD) push('Дата регистрации', v(sgD.registrationDate,null,false));
   push('Руководитель', v(sgD&&sgD.headFullname, wkA&&wkA.head, live));
   push('Юр. адрес', v(sgD&&sgD.legalAddress, wkA&&wkA.address, live));
