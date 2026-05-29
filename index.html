@@ -548,8 +548,9 @@ function validate(){
 
   renderDecode(o);
 
-  // Если это валидный БИН (не ИИН, номер не сломан) — подтягиваем данные из реестров.
-  if(o.isBIN && !numberBroken && !structIssue) registryLookup(o.raw);
+  // Валидный ИИН или БИН (номер не сломан) — подтягиваем данные из реестров.
+  // stat.gov.kz отдаёт карточку и по ИИН (если это ИП / зарегистрированное физлицо).
+  if((o.isIIN || o.isBIN) && !numberBroken && !structIssue) registryLookup(o.raw);
   else clearRegistry();
 }
 
@@ -694,7 +695,7 @@ function renderRegistry(){
     const missing = sg.error==='extension-missing' || /Расширени|установ/i.test(sg.error||'');
     html+=`<div class="reg-note">${missing?'Данные компании из stat.gov.kz — нужен макрос (расширение) и активная ЭЦП-сессия.':'stat.gov.kz: '+escH(sg.error||'нет связи')}</div>`;
   } else if(sg.state==='empty'){
-    html+='<div class="reg-note">В stat.gov.kz по этому БИН ничего не найдено.</div>';
+    html+='<div class="reg-note">В stat.gov.kz по этому номеру ничего не найдено.</div>';
   }
   el.innerHTML=html;
 }
