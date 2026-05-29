@@ -186,9 +186,17 @@
             <select id="type">
               <option value="">— не указан —</option>
               <option value="fiz">Физическое лицо</option>
-              <option value="jur_res">Юр. лицо — резидент РК</option>
-              <option value="jur_nres">Юр. лицо — нерезидент РК</option>
+              <option value="jur">Юр. лицо</option>
               <option value="ip">ИП / КФХ</option>
+            </select>
+          </div>
+
+          <div class="field hidden" id="f-residency">
+            <label class="fld" for="residency">Резидентство</label>
+            <select id="residency">
+              <option value="">— не указано —</option>
+              <option value="res">Резидент РК</option>
+              <option value="nres">Нерезидент РК</option>
             </select>
           </div>
 
@@ -299,7 +307,7 @@ const TYPE_BADGE={
   jur_nres:{txt:'Юр. лицо',cls:'b-jur'},
   ip:{txt:'ИП / КФХ',cls:'b-ip'}
 };
-const TYPE_SHORT={fiz:'физлицо',jur_res:'юр. резидент',jur_nres:'юр. нерезидент',ip:'ИП / КФХ'};
+const TYPE_SHORT={fiz:'физлицо',jur:'юр. лицо',ip:'ИП / КФХ'};
 const ORG_SHORT={'0':'Головное',1:'Филиал',2:'Представительство',3:'КФХ'};
 const GEND_LABEL={M:'Мужской',F:'Женский'};
 function typeBadge(t){const b=TYPE_BADGE[t];return `<span class="badge ${b.cls}">${b.txt}</span>`;}
@@ -371,7 +379,7 @@ function renderDecode(o){
   if(o.len===0){ box.className='decode idle'; box.textContent='Введите номер — здесь появится тип контрагента и все поля.'; return; }
   box.className='decode';
 
-  const declType=$('type').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
+  const declType=$('type').value, declRes=$('residency').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
   const rows=[];
   const push=(k,vHtml,status,note)=>rows.push(
     `<div class="drow${status?' s-'+status:''}"><span class="dk">${k}</span><span class="dv">${vHtml}`+
@@ -382,12 +390,12 @@ function renderDecode(o){
     if(o.typeKnown){
       // ИИН, найденный в stat.gov.kz, — это зарегистрированный ИП, а не просто физлицо.
       const ipFromRegistry = o.isIIN && _regBin===o.raw && _reg && _reg.sg && _reg.sg.state==='ok';
-      const numType = ipFromRegistry ? 'ip' : (o.isIIN?'fiz':o.entityType);
+      const numBroad = ipFromRegistry ? 'ip' : (o.isIIN ? 'fiz' : (o.entityType==='ip' ? 'ip' : 'jur'));
       const badgeHtml = ipFromRegistry
         ? '<span class="badge b-ip">ИП (Индивидуальный Предприниматель)</span>'
-        : typeBadge(numType);
+        : typeBadge(o.isIIN?'fiz':o.entityType);
       let st=null,note='';
-      if(declType){ if(declType===numType) st='ok'; else { st='warn'; note='анкета: '+TYPE_SHORT[declType]; } }
+      if(declType){ if(declType===numBroad) st='ok'; else { st='warn'; note='анкета: '+TYPE_SHORT[declType]; } }
       push('Тип контрагента', badgeHtml, st, note);
     } else {
       push('Тип контрагента', `<span class="muted-v">не определён · 5-я цифра ${o.fifth}</span>`, 'bad');
@@ -415,7 +423,12 @@ function renderDecode(o){
 
   /* Организация */
   if(o.isBIN){
-    if(o.residency) push('Резидентство', `<span class="badge ${o.entityType==='jur_res'?'b-res':'b-nonres'}">${o.residency}</span>`, null);
+    if(o.residency){
+      const numRes=o.entityType==='jur_res'?'res':'nres';
+      let rst=null,rnote='';
+      if(declRes){ if(declRes===numRes) rst='ok'; else { rst='warn'; rnote='анкета: '+(declRes==='res'?'резидент РК':'нерезидент РК'); } }
+      push('Резидентство', `<span class="badge ${numRes==='res'?'b-res':'b-nonres'}">${o.residency}</span>`, rst, rnote);
+    }
     if(o.len>=6){
       if(!o.orgStatusKnown) push('Признак','<span class="muted-v">неизвестный код '+o.sixth+'</span>','bad');
       else{
@@ -441,17 +454,23 @@ function renderDecode(o){
 /* ===================== ПРОВЕРКА ===================== */
 function syncGroups(o){
   const declType=$('type').value;
-  let showFiz, showOrg;
-  if(o && o.typeKnown){ showFiz=o.isIIN; showOrg=o.isBIN; }
-  else{ showFiz=declType==='fiz'; showOrg=(declType==='jur_res'||declType==='jur_nres'||declType==='ip'); }
+  let showFiz, showOrg, showRes;
+  if(o && o.typeKnown){
+    showFiz=o.isIIN; showOrg=o.isBIN;
+    showRes=o.isBIN && (o.entityType==='jur_res'||o.entityType==='jur_nres');
+  } else {
+    showFiz=declType==='fiz'; showOrg=(declType==='jur'||declType==='ip');
+    showRes=declType==='jur';
+  }
   $('grp-fiz').classList.toggle('hidden', !showFiz);
   $('grp-org').classList.toggle('hidden', !showOrg);
+  $('f-residency').classList.toggle('hidden', !showRes);
 }
 
 function validate(){
   const o=decode($('num').value);
   syncGroups(o);
-  ['f-type','f-gender','f-dob','f-orgstatus','f-reg'].forEach(id=>$(id).classList.remove('flag-bad','flag-ok'));
+  ['f-type','f-residency','f-gender','f-dob','f-orgstatus','f-reg'].forEach(id=>$(id).classList.remove('flag-bad','flag-ok'));
   $('cnt').textContent=o.len;
   $('numnote').classList.remove('show'); $('numnote').textContent='';
 
@@ -466,7 +485,7 @@ function validate(){
     renderDecode(o); clearRegistry(); return;
   }
 
-  const declType=$('type').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
+  const declType=$('type').value, declRes=$('residency').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
   let numberBroken=false, structIssue=false, fieldMismatch=false, anketaFilled=false;
 
   if(!o.checksum.ok){ numberBroken=true; }
@@ -485,7 +504,8 @@ function validate(){
     if(!o.legalNotKfh || !o.kfhConsistent){ structIssue=true; }
     if(!o.orgStatusKnown){ structIssue=true; }
     if(!o.reg.monthOk){ structIssue=true; }
-    if(declType){ anketaFilled=true; if(declType===o.entityType) flag('f-type',true); else { fieldMismatch=true; flag('f-type',false); } }
+    if(declType){ anketaFilled=true; const numBroad=o.entityType==='ip'?'ip':'jur'; if(declType===numBroad) flag('f-type',true); else { fieldMismatch=true; flag('f-type',false); } }
+    if(declRes && o.residency){ anketaFilled=true; const numRes=o.entityType==='jur_res'?'res':'nres'; if(declRes===numRes) flag('f-residency',true); else { fieldMismatch=true; flag('f-residency',false); } }
     if(declS!=='' && o.orgStatusKnown){ anketaFilled=true; if(Number(declS)===o.orgStatusCode) flag('f-orgstatus',true); else { fieldMismatch=true; flag('f-orgstatus',false); } }
     if(declR && o.reg.monthOk){ anketaFilled=true; const rp=declR.split('-'); const ry=Number(rp[0]),rm=Number(rp[1]); if((ry%100)===o.reg.yy&&rm===o.reg.mm) flag('f-reg',true); else { fieldMismatch=true; flag('f-reg',false); } }
   }
@@ -673,10 +693,10 @@ $('num').addEventListener('input',e=>{
   e.target.value=e.target.value.replace(/\D/g,'').slice(0,12);
   validate();
 });
-['type','gender','dob','orgstatus','reg'].forEach(id=>$(id).addEventListener('input',validate));
+['type','residency','gender','dob','orgstatus','reg'].forEach(id=>$(id).addEventListener('input',validate));
 
 $('btn-clear').addEventListener('click',()=>{
-  ['num','gender','dob','orgstatus','reg'].forEach(id=>$(id).value='');
+  ['num','residency','gender','dob','orgstatus','reg'].forEach(id=>$(id).value='');
   $('type').value='';
   validate();
   $('num').focus();
@@ -690,7 +710,8 @@ $('btn-fill').addEventListener('click',()=>{
     $('gender').value=o.gender||'';
     if(o.birth.valid) $('dob').value=`${o.birth.year}-${pad(o.birth.mm)}-${pad(o.birth.dd)}`;
   }else if(o.isBIN){
-    $('type').value=o.entityType;
+    $('type').value = o.entityType==='ip'?'ip':'jur';
+    $('residency').value = o.entityType==='jur_res'?'res':o.entityType==='jur_nres'?'nres':'';
     if(o.orgStatusKnown) $('orgstatus').value=String(o.orgStatusCode);
   }
   validate();
@@ -698,14 +719,14 @@ $('btn-fill').addEventListener('click',()=>{
 
 const EX={
   fiz:   {num:'020518501477',type:'fiz',gender:'M',dob:'2002-05-18'},
-  jur:   {num:'150841000122',type:'jur_res',orgstatus:'1',reg:'2015-08-10'},
+  jur:   {num:'150841000122',type:'jur',residency:'res',orgstatus:'1',reg:'2015-08-10'},
   ip:    {num:'210363000128',type:'ip',orgstatus:'3',reg:'2021-03-15'},
   broken:{num:'020518501476',type:'fiz',gender:'M',dob:'2002-05-18'},
   mism:  {num:'020518501477',type:'fiz',gender:'F',dob:'2002-05-18'}
 };
 document.querySelectorAll('[data-ex]').forEach(b=>b.addEventListener('click',()=>{
   const e=EX[b.dataset.ex];
-  ['num','type','gender','dob','orgstatus','reg'].forEach(id=>$(id).value=e[id]||'');
+  ['num','type','residency','gender','dob','orgstatus','reg'].forEach(id=>$(id).value=e[id]||'');
   validate();
 }));
 
