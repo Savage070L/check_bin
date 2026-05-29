@@ -75,24 +75,6 @@
   .numnote.show{display:flex}
   .numnote::before{content:"✕";display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--err-soft);font-size:11px;flex:none}
 
-  /* digit map */
-  .breakdown{margin-top:14px}
-  .cells{display:flex;gap:5px;flex-wrap:wrap}
-  .cell{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1 1 auto;min-width:0}
-  .cell .box{
-    width:100%;min-width:28px;aspect-ratio:1/1;max-height:44px;border-radius:9px;display:grid;place-items:center;
-    font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:18px;color:var(--ink);
-    background:#F2F1EC;border:1px solid var(--line-2);transition:.15s;
-  }
-  .cell .pos{font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--faint)}
-  .cell.empty .box{color:var(--faint);background:#F2F1EC}
-  .seg-date .box{background:var(--c-date-bg);color:var(--c-date);border-color:transparent}
-  .seg-type .box{background:var(--c-type-bg);color:var(--c-type);border-color:transparent}
-  .seg-flag .box{background:var(--c-flag-bg);color:var(--c-flag);border-color:transparent}
-  .seg-serial .box{background:var(--c-serial-bg);color:var(--c-serial);border-color:transparent}
-  .seg-ctrl .box{background:var(--c-ctrl-bg);color:var(--c-ctrl);border-color:transparent}
-  .cell.bad .box{outline:2px solid var(--err);outline-offset:1px}
-
   /* anketa form */
   .anketa{margin-top:22px;padding-top:18px;border-top:1px solid var(--line-2)}
   .anketa-hd{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:14px;display:flex;align-items:center;gap:8px}
@@ -143,7 +125,6 @@
   .badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12.5px;font-weight:600}
   .b-fiz{background:var(--c-date-bg);color:var(--c-date)}
   .b-jur{background:var(--ok-soft);color:var(--ok)}
-  .b-nres{background:var(--c-flag-bg);color:var(--c-flag)}
   .b-ip{background:var(--c-type-bg);color:var(--c-type)}
   .b-res{background:var(--accent-soft);color:var(--accent)}
   .b-nonres{background:var(--warn-soft);color:var(--warn)}
@@ -195,9 +176,6 @@
             <span class="counter"><b id="cnt">0</b>/12</span>
           </div>
           <div class="numnote" id="numnote"></div>
-          <div class="breakdown">
-            <div class="cells" id="cells"></div>
-          </div>
         </div>
 
         <div class="anketa">
@@ -317,8 +295,8 @@ const fmtDate=(y,m,d)=>`${pad(d)}.${pad(m)}.${y}`;
 
 const TYPE_BADGE={
   fiz:{txt:'Физическое лицо',cls:'b-fiz'},
-  jur_res:{txt:'Юр. лицо · резидент РК',cls:'b-jur'},
-  jur_nres:{txt:'Юр. лицо · нерезидент РК',cls:'b-nres'},
+  jur_res:{txt:'Юр. лицо',cls:'b-jur'},
+  jur_nres:{txt:'Юр. лицо',cls:'b-jur'},
   ip:{txt:'ИП / КФХ',cls:'b-ip'}
 };
 const TYPE_SHORT={fiz:'физлицо',jur_res:'юр. резидент',jur_nres:'юр. нерезидент',ip:'ИП / КФХ'};
@@ -386,26 +364,9 @@ function decode(num){
   return o;
 }
 
-/* ===================== РЕНДЕР: карта цифр ===================== */
-function renderCells(o){
-  const cells=document.getElementById('cells');
-  const num=o.raw;
-  let segs=null;
-  if(o.typeKnown && o.isBIN) segs=[['date',0,3],['type',4,4],['flag',5,5],['serial',6,10],['ctrl',11,11]];
-  else if(o.typeKnown && o.isIIN) segs=[['date',0,5],['type',6,6],['serial',7,10],['ctrl',11,11]];
-  const segOf=i=>{ if(!segs) return ''; for(const[s,a,b] of segs) if(i>=a&&i<=b) return 'seg-'+s; return ''; };
-  let html='';
-  for(let i=0;i<12;i++){
-    const ch = i<num.length ? num[i] : '·';
-    const empty = i>=num.length ? ' empty':'';
-    html+=`<div class="cell ${segOf(i)}${empty}" data-i="${i}"><div class="box">${ch}</div><div class="pos">${i+1}</div></div>`;
-  }
-  cells.innerHTML=html;
-}
-function markBadCells(idxs){ idxs.forEach(i=>{const el=document.querySelector(`.cell[data-i="${i}"]`); if(el) el.classList.add('bad');}); }
-
 /* ===================== РЕНДЕР: расшифровка справа ===================== */
 function renderDecode(o){
+  _lastO=o;
   const box=$('decode');
   if(o.len===0){ box.className='decode idle'; box.textContent='Введите номер — здесь появится тип контрагента и все поля.'; return; }
   box.className='decode';
@@ -419,10 +380,15 @@ function renderDecode(o){
   /* Тип контрагента */
   if(o.len>=5){
     if(o.typeKnown){
-      const numType=o.isIIN?'fiz':o.entityType;
+      // ИИН, найденный в stat.gov.kz, — это зарегистрированный ИП, а не просто физлицо.
+      const ipFromRegistry = o.isIIN && _regBin===o.raw && _reg && _reg.sg && _reg.sg.state==='ok';
+      const numType = ipFromRegistry ? 'ip' : (o.isIIN?'fiz':o.entityType);
+      const badgeHtml = ipFromRegistry
+        ? '<span class="badge b-ip">ИП (Индивидуальный Предприниматель)</span>'
+        : typeBadge(numType);
       let st=null,note='';
       if(declType){ if(declType===numType) st='ok'; else { st='warn'; note='анкета: '+TYPE_SHORT[declType]; } }
-      push('Тип контрагента', typeBadge(numType), st, note);
+      push('Тип контрагента', badgeHtml, st, note);
     } else {
       push('Тип контрагента', `<span class="muted-v">не определён · 5-я цифра ${o.fifth}</span>`, 'bad');
     }
@@ -485,7 +451,6 @@ function syncGroups(o){
 function validate(){
   const o=decode($('num').value);
   syncGroups(o);
-  renderCells(o);
   ['f-type','f-gender','f-dob','f-orgstatus','f-reg'].forEach(id=>$(id).classList.remove('flag-bad','flag-ok'));
   $('cnt').textContent=o.len;
   $('numnote').classList.remove('show'); $('numnote').textContent='';
@@ -503,31 +468,29 @@ function validate(){
 
   const declType=$('type').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
   let numberBroken=false, structIssue=false, fieldMismatch=false, anketaFilled=false;
-  const badCells=[];
 
-  if(!o.checksum.ok){ numberBroken=true; badCells.push(11); }
-  if(!o.typeKnown){ structIssue=true; badCells.push(4); }
+  if(!o.checksum.ok){ numberBroken=true; }
+  if(!o.typeKnown){ structIssue=true; }
 
   if(o.isIIN){
-    if(!o.centuryKnown){ structIssue=true; badCells.push(6); }
-    else if(!o.birth.valid){ structIssue=true; badCells.push(0,1,2,3,4,5); }
-    else if(o.birth.future){ structIssue=true; badCells.push(0,1,2,3,4,5); }
-    if(declType){ anketaFilled=true; if(declType==='fiz') flag('f-type',true); else { fieldMismatch=true; badCells.push(4); flag('f-type',false); } }
-    if(declG){ anketaFilled=true; if(o.gender&&declG===o.gender) flag('f-gender',true); else { fieldMismatch=true; badCells.push(6); flag('f-gender',false); } }
-    if(declD && o.birth && o.birth.valid){ anketaFilled=true; if(sameDate(declD,o)) flag('f-dob',true); else { fieldMismatch=true; badCells.push(0,1,2,3,4,5); flag('f-dob',false); } }
+    if(!o.centuryKnown){ structIssue=true; }
+    else if(!o.birth.valid){ structIssue=true; }
+    else if(o.birth.future){ structIssue=true; }
+    if(declType){ anketaFilled=true; if(declType==='fiz') flag('f-type',true); else { fieldMismatch=true; flag('f-type',false); } }
+    if(declG){ anketaFilled=true; if(o.gender&&declG===o.gender) flag('f-gender',true); else { fieldMismatch=true; flag('f-gender',false); } }
+    if(declD && o.birth && o.birth.valid){ anketaFilled=true; if(sameDate(declD,o)) flag('f-dob',true); else { fieldMismatch=true; flag('f-dob',false); } }
   }
 
   if(o.isBIN){
-    if(!o.legalNotKfh || !o.kfhConsistent){ structIssue=true; badCells.push(4,5); }
-    if(!o.orgStatusKnown){ structIssue=true; badCells.push(5); }
-    if(!o.reg.monthOk){ structIssue=true; badCells.push(2,3); }
-    if(declType){ anketaFilled=true; if(declType===o.entityType) flag('f-type',true); else { fieldMismatch=true; badCells.push(4); flag('f-type',false); } }
-    if(declS!=='' && o.orgStatusKnown){ anketaFilled=true; if(Number(declS)===o.orgStatusCode) flag('f-orgstatus',true); else { fieldMismatch=true; badCells.push(5); flag('f-orgstatus',false); } }
-    if(declR && o.reg.monthOk){ anketaFilled=true; const rp=declR.split('-'); const ry=Number(rp[0]),rm=Number(rp[1]); if((ry%100)===o.reg.yy&&rm===o.reg.mm) flag('f-reg',true); else { fieldMismatch=true; badCells.push(0,1,2,3); flag('f-reg',false); } }
+    if(!o.legalNotKfh || !o.kfhConsistent){ structIssue=true; }
+    if(!o.orgStatusKnown){ structIssue=true; }
+    if(!o.reg.monthOk){ structIssue=true; }
+    if(declType){ anketaFilled=true; if(declType===o.entityType) flag('f-type',true); else { fieldMismatch=true; flag('f-type',false); } }
+    if(declS!=='' && o.orgStatusKnown){ anketaFilled=true; if(Number(declS)===o.orgStatusCode) flag('f-orgstatus',true); else { fieldMismatch=true; flag('f-orgstatus',false); } }
+    if(declR && o.reg.monthOk){ anketaFilled=true; const rp=declR.split('-'); const ry=Number(rp[0]),rm=Number(rp[1]); if((ry%100)===o.reg.yy&&rm===o.reg.mm) flag('f-reg',true); else { fieldMismatch=true; flag('f-reg',false); } }
   }
 
   $('num').className='num '+((numberBroken||structIssue)?'bad':(o.checksum.ok?'ok':''));
-  markBadCells([...new Set(badCells)]);
 
   if(numberBroken || structIssue){
     let reason;
@@ -620,7 +583,7 @@ StatGovClient.init();
 
 const WORKER_URL='https://bin-lookup.toibaev-kuanysh-617.workers.dev';
 const escH=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let _regBin=null, _reg=null;
+let _regBin=null, _reg=null, _lastO=null;
 
 function clearRegistry(){
   _regBin=null; _reg=null;
@@ -636,7 +599,7 @@ function registryLookup(bin){
   StatGovClient.lookup(bin)
     .then(data=>{ if(_regBin!==bin) return; _reg.sg=(data&&data.found===false)?{state:'empty'}:{state:'ok',data}; })
     .catch(e=>{ if(_regBin!==bin) return; _reg.sg={state:'err',error:e.message}; })
-    .finally(()=>{ if(_regBin===bin) renderRegistry(); });
+    .finally(()=>{ if(_regBin!==bin) return; renderRegistry(); if(_lastO && _lastO.raw===bin) renderDecode(_lastO); });
   // e-Qazyna гос. участие + адрес через Cloudflare Worker
   const ctrl=new AbortController();
   const to=setTimeout(()=>ctrl.abort(),20000);
