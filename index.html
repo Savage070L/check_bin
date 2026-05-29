@@ -146,6 +146,20 @@
   .b-nres{background:var(--c-flag-bg);color:var(--c-flag)}
   .b-ip{background:var(--c-type-bg);color:var(--c-type)}
 
+  /* registry (live data from stat.gov.kz + e-Qazyna) */
+  .registry{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:none}
+  .registry.show{display:block;animation:fade .22s ease}
+  .registry-hd{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .registry-hd .src{font-weight:600;letter-spacing:0;text-transform:none}
+  .reg-load{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1.1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+  .badge-gov{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:13px;font-weight:700}
+  .gov-no{background:var(--ok-soft);color:var(--ok)}
+  .gov-yes{background:var(--warn-soft);color:var(--warn)}
+  .reg-note{font-size:11.5px;color:var(--faint);margin-top:8px;display:flex;align-items:center;gap:6px}
+  .reg-note::before{content:"i";display:grid;place-items:center;width:15px;height:15px;border-radius:50%;background:#E7EAEE;color:var(--muted);font-size:10px;font-weight:700;font-family:"IBM Plex Mono",monospace;flex:none}
+
   details.note{margin-top:16px;border:1px solid var(--line);border-radius:11px;background:var(--panel);overflow:hidden}
   details.note summary{cursor:pointer;padding:11px 15px;font-size:13px;font-weight:600;color:var(--ink-2);list-style:none}
   details.note summary::-webkit-details-marker{display:none}
@@ -271,6 +285,7 @@
           </div>
         </div>
         <div class="decode idle" id="decode">Введите номер — здесь появится тип контрагента и все поля.</div>
+        <div class="registry" id="registry"></div>
       </div>
     </section>
 
@@ -474,12 +489,12 @@ function validate(){
   if(o.len===0){
     $('num').className='num';
     setVerdict('idle','Ожидание ввода','Введите номер — расшифровка появится здесь.');
-    renderDecode(o); return;
+    renderDecode(o); clearRegistry(); return;
   }
   if(!o.full){
     $('num').className='num';
     setVerdict('wait','Вводится номер…',`Введено ${o.len} из 12 цифр.`);
-    renderDecode(o); return;
+    renderDecode(o); clearRegistry(); return;
   }
 
   const declType=$('type').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
@@ -532,6 +547,10 @@ function validate(){
   }
 
   renderDecode(o);
+
+  // Если это валидный БИН (не ИИН, номер не сломан) — подтягиваем данные из реестров.
+  if(o.isBIN && !numberBroken && !structIssue) registryLookup(o.raw);
+  else clearRegistry();
 }
 
 function flag(id,ok){ $(id).classList.add(ok?'flag-ok':'flag-bad'); }
@@ -543,6 +562,141 @@ function setVerdict(kind,title,desc){
   const ico={green:'✓',amber:'!',red:'✕',teal:'i',wait:'…',idle:'·'}[kind];
   v.className='verdict '+cls;
   v.innerHTML=`<div class="vico">${ico}</div><div><div class="vt">${title}</div><div class="vd">${desc}</div></div>`;
+}
+
+/* ===================== РЕЕСТРЫ: stat.gov.kz + e-Qazyna ===================== */
+// stat.gov.kz тянет chrome-расширение (папка chrome-extension/): оно инжектит
+// content.js на эту страницу, общение — через window.postMessage. Гос. участие
+// и адрес отдаёт Cloudflare Worker (он сам ходит на gr5.e-qazyna.kz / pk.uchet.kz).
+const StatGovClient={
+  SOURCE_APP:'sl-app', SOURCE_BRIDGE:'sl-bridge', _ready:false, _timeout:15000,
+  init(){
+    window.addEventListener('message',ev=>{
+      if(ev.source!==window) return;
+      const d=ev.data;
+      if(!d||d.source!==StatGovClient.SOURCE_BRIDGE) return;
+      if(d.type==='BRIDGE_READY') StatGovClient._ready=true;
+    });
+  },
+  ping(timeoutMs=1500){
+    const requestId='ping-'+Math.random().toString(36).slice(2);
+    return new Promise(resolve=>{
+      let done=false;
+      const h=ev=>{
+        if(ev.source!==window) return;
+        const d=ev.data;
+        if(!d||d.source!==StatGovClient.SOURCE_BRIDGE||d.type!=='PONG'||d.requestId!==requestId) return;
+        done=true; window.removeEventListener('message',h); StatGovClient._ready=true; resolve({ok:true});
+      };
+      window.addEventListener('message',h);
+      window.postMessage({source:StatGovClient.SOURCE_APP,type:'PING',requestId},'*');
+      setTimeout(()=>{ if(done) return; window.removeEventListener('message',h); resolve({ok:false}); },timeoutMs);
+    });
+  },
+  async lookup(bin){
+    if(!StatGovClient._ready){ const p=await StatGovClient.ping(); if(!p.ok) throw new Error('extension-missing'); }
+    const requestId='lookup-'+Math.random().toString(36).slice(2);
+    return new Promise((resolve,reject)=>{
+      let done=false;
+      const h=ev=>{
+        if(ev.source!==window) return;
+        const d=ev.data;
+        if(!d||d.source!==StatGovClient.SOURCE_BRIDGE||d.type!=='STATGOV_LOOKUP_RESULT'||d.requestId!==requestId) return;
+        done=true; window.removeEventListener('message',h);
+        if(d.ok) resolve(d.data); else reject(new Error(d.error||'Ошибка моста'));
+      };
+      window.addEventListener('message',h);
+      window.postMessage({source:StatGovClient.SOURCE_APP,type:'STATGOV_LOOKUP',requestId,bin},'*');
+      setTimeout(()=>{ if(done) return; window.removeEventListener('message',h); reject(new Error('Таймаут stat.gov.kz')); },StatGovClient._timeout);
+    });
+  }
+};
+StatGovClient.init();
+
+const WORKER_URL='https://bin-lookup.toibaev-kuanysh-617.workers.dev';
+const escH=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let _regBin=null, _reg=null;
+
+function clearRegistry(){
+  _regBin=null; _reg=null;
+  const el=$('registry'); if(el){ el.classList.remove('show'); el.innerHTML=''; }
+}
+
+function registryLookup(bin){
+  if(bin===_regBin){ renderRegistry(); return; }   // этот БИН уже запрошен/в полёте
+  _regBin=bin;
+  _reg={bin, sg:{state:'loading'}, wk:{state:'loading'}};
+  renderRegistry();
+  // stat.gov.kz — данные компании через расширение-мост
+  StatGovClient.lookup(bin)
+    .then(data=>{ if(_regBin!==bin) return; _reg.sg=(data&&data.found===false)?{state:'empty'}:{state:'ok',data}; })
+    .catch(e=>{ if(_regBin!==bin) return; _reg.sg={state:'err',error:e.message}; })
+    .finally(()=>{ if(_regBin===bin) renderRegistry(); });
+  // e-Qazyna гос. участие + адрес через Cloudflare Worker
+  const ctrl=new AbortController();
+  const to=setTimeout(()=>ctrl.abort(),20000);
+  fetch(WORKER_URL+'?bin='+encodeURIComponent(bin),{signal:ctrl.signal})
+    .then(r=>{ if(!r.ok) throw new Error('worker '+r.status); return r.json(); })
+    .then(data=>{ if(_regBin!==bin) return; _reg.wk={state:'ok',data}; })
+    .catch(e=>{ if(_regBin!==bin) return; _reg.wk={state:'err',error:e.message}; })
+    .finally(()=>{ clearTimeout(to); if(_regBin===bin) renderRegistry(); });
+}
+
+function govBadge(wk){
+  if(wk.state==='loading') return '<span class="muted-v">запрос…</span>';
+  const g=wk.state==='ok'&&wk.data?wk.data.gov:null;
+  if(!g) return '<span class="muted-v">нет данных</span>';
+  if(g.found===false) return '<span class="badge-gov gov-no">Нет</span>';
+  if(g.share) return `<span class="badge-gov gov-yes">Да · ${escH(g.share)}</span>`;
+  if(g.found) return '<span class="badge-gov gov-yes">Да</span>';
+  return '<span class="muted-v">нет данных</span>';
+}
+
+function renderRegistry(){
+  const el=$('registry');
+  if(!_reg){ el.classList.remove('show'); el.innerHTML=''; return; }
+  el.classList.add('show');
+  const sg=_reg.sg, wk=_reg.wk;
+  const sgD = sg.state==='ok'?sg.data:null;
+  const wkA = (wk.state==='ok'&&wk.data)?wk.data.address:null;
+  const live = sg.state==='loading'||wk.state==='loading';
+
+  const rows=[];
+  const push=(k,vHtml)=>{ if(vHtml!=null) rows.push(`<div class="drow"><span class="dk">${k}</span><span class="dv">${vHtml}</span></div>`); };
+  const v=(primary,fallback,loading)=>{
+    const p=(primary!=null&&String(primary).trim()!=='')?primary:null;
+    const f=(fallback!=null&&String(fallback).trim()!=='')?fallback:null;
+    if(p) return escH(p);
+    if(f) return escH(f);
+    if(loading) return '<span class="muted-v">запрос…</span>';
+    return null;
+  };
+
+  push('Наименование', v(sgD&&sgD.name, wkA&&wkA.name, live));
+  push('Гос. участие', govBadge(wk));
+  if(sgD) push('Дата регистрации', v(sgD.registrationDate,null,false));
+  push('Руководитель', v(sgD&&sgD.headFullname, wkA&&wkA.head, live));
+  push('Юр. адрес', v(sgD&&sgD.legalAddress, wkA&&wkA.address, live));
+  if(sgD){
+    if(sgD.okedPrimaryCode){
+      const nm=sgD.okedPrimaryName?` · ${escH(sgD.okedPrimaryName)}`:'';
+      push('ОКЭД (осн.)', `<span class="mono-v">${escH(sgD.okedPrimaryCode)}</span>${nm}`);
+    }
+    push('Форма собственности', v(sgD.kfsName,null,false));
+    push('КРП', v(sgD.krpWithBranchesName||sgD.krpWithoutBranchesName,null,false));
+    push('Сектор экономики', v(sgD.sectorName,null,false));
+    if(sgD.kato) push('КАТО', `<span class="mono-v">${escH(sgD.kato)}</span>`);
+  }
+
+  let html=`<div class="registry-hd">Реестры <span class="src">stat.gov.kz · e-Qazyna</span>${live?'<span class="reg-load"><span class="dot"></span></span>':''}</div>`;
+  html+=rows.join('');
+  if(sg.state==='err'){
+    const missing = sg.error==='extension-missing' || /Расширени|установ/i.test(sg.error||'');
+    html+=`<div class="reg-note">${missing?'Данные компании из stat.gov.kz — нужен макрос (расширение) и активная ЭЦП-сессия.':'stat.gov.kz: '+escH(sg.error||'нет связи')}</div>`;
+  } else if(sg.state==='empty'){
+    html+='<div class="reg-note">В stat.gov.kz по этому БИН ничего не найдено.</div>';
+  }
+  el.innerHTML=html;
 }
 
 /* ===================== СОБЫТИЯ ===================== */
