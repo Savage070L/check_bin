@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Валидатор ИИН / БИН</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ECEAE3; --paper:#FBFAF7; --panel:#FFFFFF;
+    --ink:#191B1F; --ink-2:#3C4046; --muted:#73777E; --faint:#9DA1A8;
+    --line:rgba(20,22,26,.12); --line-2:rgba(20,22,26,.06);
+    --accent:#1C3F6E; --accent-soft:#E7EDF5;
+    --ok:#0F7B53; --ok-soft:#E3F2EA;
+    --warn:#9A5800; --warn-soft:#FBEEDB;
+    --err:#B42318; --err-soft:#FBE7E5;
+    --c-date:#1C3F6E; --c-date-bg:#E7EDF5;
+    --c-type:#7A3A0E; --c-type-bg:#F6E9DD;
+    --c-flag:#5B3A82; --c-flag-bg:#EEE7F5;
+    --c-serial:#5A5F66; --c-serial-bg:#ECECEC;
+    --c-ctrl:#0F7B53; --c-ctrl-bg:#E3F2EA;
+    --shadow:0 1px 2px rgba(20,22,26,.04), 0 10px 30px rgba(20,22,26,.06);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 500px at 12% -8%, rgba(28,63,110,.06), transparent 60%),
+      radial-gradient(900px 420px at 105% 0%, rgba(122,58,14,.05), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding:32px 18px 64px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+
+  /* Header */
+  header.top{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+  .mark{
+    width:46px;height:46px;border-radius:12px;flex:none;
+    background:linear-gradient(150deg,#27496f,#16304f);
+    display:grid;place-items:center;color:#fff;box-shadow:var(--shadow);
+    font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:13px;letter-spacing:.5px;
+  }
+  .mark span{display:block;line-height:1;text-align:center}
+  h1{font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:700;font-size:24px;letter-spacing:-.2px;margin:0;line-height:1.05}
+  .sub{color:var(--muted);font-size:13px;margin-top:3px}
+
+  /* Layout */
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .card .hd{padding:13px 18px;border-bottom:1px solid var(--line-2)}
+  .card .hd h2{margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+  .card .bd{padding:18px}
+
+  /* Number input */
+  label.fld{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin:0 0 7px}
+  .numbox{position:relative}
+  input.num{
+    width:100%;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:24px;letter-spacing:6px;
+    padding:14px 16px;border:1.5px solid var(--line);border-radius:11px;background:#fff;color:var(--ink);
+    outline:none;transition:border-color .15s, box-shadow .15s;
+  }
+  input.num:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  input.num.ok{border-color:var(--ok)} input.num.bad{border-color:var(--err)}
+  .counter{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--faint);background:#fff;padding-left:8px}
+  .counter b{color:var(--ink-2)}
+  .numnote{margin-top:9px;font-size:13px;font-weight:600;color:var(--err);display:none;align-items:center;gap:7px}
+  .numnote.show{display:flex}
+  .numnote::before{content:"✕";display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--err-soft);font-size:11px;flex:none}
+
+  /* digit map */
+  .breakdown{margin-top:14px}
+  .cells{display:flex;gap:5px;flex-wrap:wrap}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1 1 auto;min-width:0}
+  .cell .box{
+    width:100%;min-width:28px;aspect-ratio:1/1;max-height:44px;border-radius:9px;display:grid;place-items:center;
+    font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:18px;color:var(--ink);
+    background:#F2F1EC;border:1px solid var(--line-2);transition:.15s;
+  }
+  .cell .pos{font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--faint)}
+  .cell.empty .box{color:var(--faint);background:#F2F1EC}
+  .seg-date .box{background:var(--c-date-bg);color:var(--c-date);border-color:transparent}
+  .seg-type .box{background:var(--c-type-bg);color:var(--c-type);border-color:transparent}
+  .seg-flag .box{background:var(--c-flag-bg);color:var(--c-flag);border-color:transparent}
+  .seg-serial .box{background:var(--c-serial-bg);color:var(--c-serial);border-color:transparent}
+  .seg-ctrl .box{background:var(--c-ctrl-bg);color:var(--c-ctrl);border-color:transparent}
+  .cell.bad .box{outline:2px solid var(--err);outline-offset:1px}
+
+  /* anketa form */
+  .anketa{margin-top:22px;padding-top:18px;border-top:1px solid var(--line-2)}
+  .anketa-hd{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .opt{font-weight:600;letter-spacing:0;text-transform:none;font-size:11px;color:var(--faint);background:#EEEDE8;padding:2px 8px;border-radius:999px}
+  .frow{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  @media(max-width:520px){.frow{grid-template-columns:1fr}}
+  .field{margin-bottom:13px}
+  select,input.txt,input[type=date]{
+    width:100%;font-family:"IBM Plex Sans",sans-serif;font-size:14px;color:var(--ink);
+    padding:10px 11px;border:1.5px solid var(--line);border-radius:9px;background:#fff;outline:none;transition:border-color .15s,box-shadow .15s;
+  }
+  select:focus,input.txt:focus,input[type=date]:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  .field.flag-bad select,.field.flag-bad input{border-color:var(--err);box-shadow:0 0 0 4px var(--err-soft)}
+  .field.flag-ok select,.field.flag-ok input{border-color:var(--ok)}
+  .hint{font-size:11.5px;color:var(--faint);margin-top:5px}
+  .hidden{display:none}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  button{font-family:"IBM Plex Sans",sans-serif;font-size:13.5px;font-weight:600;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink-2);padding:10px 15px;cursor:pointer;transition:.15s}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* verdict */
+  .verdict{border-radius:12px;padding:16px 18px;display:flex;gap:14px;align-items:flex-start;border:1px solid var(--line)}
+  .verdict .vico{width:36px;height:36px;border-radius:10px;flex:none;display:grid;place-items:center;font-size:19px;font-weight:700;color:#fff}
+  .verdict .vt{font-size:16px;font-weight:700;line-height:1.2}
+  .verdict .vd{font-size:13px;color:var(--ink-2);margin-top:4px}
+  .v-green{background:var(--ok-soft);border-color:rgba(15,123,83,.35)} .v-green .vico{background:var(--ok)} .v-green .vt{color:#0c5e3f}
+  .v-amber{background:var(--warn-soft);border-color:rgba(154,88,0,.35)} .v-amber .vico{background:var(--warn)} .v-amber .vt{color:#7a4600}
+  .v-red{background:var(--err-soft);border-color:rgba(180,35,24,.35)} .v-red .vico{background:var(--err)} .v-red .vt{color:#8f1c14}
+  .v-teal{background:var(--accent-soft);border-color:rgba(28,63,110,.3)} .v-teal .vico{background:var(--accent)} .v-teal .vt{color:#163455}
+  .v-wait{background:var(--accent-soft);border-color:rgba(28,63,110,.22)} .v-wait .vico{background:#7d93b3} .v-wait .vt{color:#1c3f6e}
+  .v-idle{background:#F2F1EC;border-style:dashed} .v-idle .vico{background:#C7C9C3;color:#6b6f76} .v-idle .vt{color:var(--muted)}
+
+  /* decoded rows */
+  .decode{margin-top:16px}
+  .decode.idle{color:var(--faint);font-size:13px;border:1px dashed var(--line);border-radius:11px;padding:18px 14px;text-align:center}
+  .drow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 2px;border-bottom:1px solid var(--line-2);animation:fade .22s ease}
+  .drow:last-child{border-bottom:none}
+  .dk{color:var(--muted);font-size:13px;flex:none}
+  .dv{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:var(--ink);text-align:right;flex-wrap:wrap;justify-content:flex-end}
+  .mono-v{font-family:"IBM Plex Mono",monospace}
+  .muted-v{color:var(--faint);font-weight:500}
+  .tick{color:var(--ok);font-weight:700;font-size:15px}
+  .chip{font-size:11.5px;font-weight:600;background:var(--warn-soft);color:var(--warn);padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .s-bad .dv{color:var(--err)}
+  @keyframes fade{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+
+  /* type badge */
+  .badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12.5px;font-weight:600}
+  .b-fiz{background:var(--c-date-bg);color:var(--c-date)}
+  .b-jur{background:var(--ok-soft);color:var(--ok)}
+  .b-nres{background:var(--c-flag-bg);color:var(--c-flag)}
+  .b-ip{background:var(--c-type-bg);color:var(--c-type)}
+
+  details.note{margin-top:16px;border:1px solid var(--line);border-radius:11px;background:var(--panel);overflow:hidden}
+  details.note summary{cursor:pointer;padding:11px 15px;font-size:13px;font-weight:600;color:var(--ink-2);list-style:none}
+  details.note summary::-webkit-details-marker{display:none}
+  details.note summary::before{content:"▸ ";color:var(--accent)}
+  details.note[open] summary::before{content:"▾ "}
+  details.note .nb{padding:0 15px 15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="mark"><span>ИИН<br>БИН</span></div>
+    <div>
+      <h1>Валидатор ИИН / БИН</h1>
+      <div class="sub">Расшифровка и сверка номера</div>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- ============ LEFT: INPUT ============ -->
+    <section class="card">
+      <div class="hd"><h2>Номер</h2></div>
+      <div class="bd">
+
+        <div class="field">
+          <label class="fld" for="num">Номер ИИН / БИН</label>
+          <div class="numbox">
+            <input id="num" class="num" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="000000000000" maxlength="12">
+            <span class="counter"><b id="cnt">0</b>/12</span>
+          </div>
+          <div class="numnote" id="numnote"></div>
+          <div class="breakdown">
+            <div class="cells" id="cells"></div>
+          </div>
+        </div>
+
+        <div class="anketa">
+          <div class="anketa-hd">Сверка с анкетой <span class="opt">необязательно</span></div>
+
+          <div class="field" id="f-type">
+            <label class="fld" for="type">Тип контрагента</label>
+            <select id="type">
+              <option value="">— не указан —</option>
+              <option value="fiz">Физическое лицо</option>
+              <option value="jur_res">Юр. лицо — резидент РК</option>
+              <option value="jur_nres">Юр. лицо — нерезидент РК</option>
+              <option value="ip">ИП / КФХ</option>
+            </select>
+          </div>
+
+          <!-- physical person -->
+          <div id="grp-fiz" class="hidden">
+            <div class="frow">
+              <div class="field" id="f-gender">
+                <label class="fld" for="gender">Пол</label>
+                <select id="gender">
+                  <option value="">— не указан —</option>
+                  <option value="M">Мужской</option>
+                  <option value="F">Женский</option>
+                </select>
+              </div>
+              <div class="field" id="f-dob">
+                <label class="fld" for="dob">Дата рождения</label>
+                <input type="date" id="dob" min="1900-01-01">
+              </div>
+            </div>
+          </div>
+
+          <!-- organization -->
+          <div id="grp-org" class="hidden">
+            <div class="frow">
+              <div class="field" id="f-orgstatus">
+                <label class="fld" for="orgstatus">Признак подразделения</label>
+                <select id="orgstatus">
+                  <option value="">— не указан —</option>
+                  <option value="0">Головное подразделение</option>
+                  <option value="1">Филиал</option>
+                  <option value="2">Представительство</option>
+                  <option value="3">КФХ (совм. предпринимательство)</option>
+                </select>
+              </div>
+              <div class="field" id="f-reg">
+                <label class="fld" for="reg">Дата регистрации</label>
+                <input type="date" id="reg">
+                <div class="hint">сверяются год и месяц</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="btnrow">
+            <button id="btn-fill">Заполнить из номера</button>
+            <button id="btn-clear">Очистить</button>
+          </div>
+        </div>
+
+        <details class="note">
+          <summary>Примеры</summary>
+          <div class="nb">
+            <div class="btnrow">
+              <button data-ex="fiz">Физлицо</button>
+              <button data-ex="jur">Юрлицо · филиал</button>
+              <button data-ex="ip">ИП · КФХ</button>
+              <button data-ex="broken">Сломанный номер</button>
+              <button data-ex="mism">Перепутанный пол</button>
+            </div>
+          </div>
+        </details>
+
+      </div>
+    </section>
+
+    <!-- ============ RIGHT: RESULT ============ -->
+    <section class="card">
+      <div class="hd"><h2>Результат</h2></div>
+      <div class="bd">
+        <div class="verdict v-idle" id="verdict">
+          <div class="vico">·</div>
+          <div>
+            <div class="vt">Ожидание ввода</div>
+            <div class="vd">Введите номер — расшифровка появится здесь.</div>
+          </div>
+        </div>
+        <div class="decode idle" id="decode">Введите номер — здесь появится тип контрагента и все поля.</div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ===================== ЯДРО: контрольная сумма ===================== */
+const W1=[1,2,3,4,5,6,7,8,9,10,11];
+const W2=[3,4,5,6,7,8,9,10,11,1,2];
+function controlDigit(s11){
+  const d=[...s11].map(Number);
+  let k=d.reduce((a,x,i)=>a+x*W1[i],0)%11;
+  if(k===10){
+    k=d.reduce((a,x,i)=>a+x*W2[i],0)%11;
+    if(k===10) return null;
+  }
+  return k;
+}
+
+const CENTURY={1:1800,2:1800,3:1900,4:1900,5:2000,6:2000,7:2100,8:2100};
+const RU_MONTH=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const pad=n=>String(n).padStart(2,'0');
+const fmtDate=(y,m,d)=>`${pad(d)}.${pad(m)}.${y}`;
+
+const TYPE_BADGE={
+  fiz:{txt:'Физическое лицо',cls:'b-fiz'},
+  jur_res:{txt:'Юр. лицо · резидент РК',cls:'b-jur'},
+  jur_nres:{txt:'Юр. лицо · нерезидент РК',cls:'b-nres'},
+  ip:{txt:'ИП / КФХ',cls:'b-ip'}
+};
+const TYPE_SHORT={fiz:'физлицо',jur_res:'юр. резидент',jur_nres:'юр. нерезидент',ip:'ИП / КФХ'};
+const ORG_SHORT={'0':'Головное',1:'Филиал',2:'Представительство',3:'КФХ'};
+const GEND_LABEL={M:'Мужской',F:'Женский'};
+function typeBadge(t){const b=TYPE_BADGE[t];return `<span class="badge ${b.cls}">${b.txt}</span>`;}
+
+/* ===================== РАСШИФРОВКА (прогрессивная) ===================== */
+function decode(num){
+  const d=[...num].map(Number);
+  const o={raw:num,len:num.length,digits:d,isIIN:false,isBIN:false,typeKnown:false};
+  o.full = o.len===12 && /^\d{12}$/.test(num);
+
+  if(o.len>=5){
+    o.fifth=d[4];
+    o.isIIN = d[4]<=3;
+    o.isBIN = d[4]>=4 && d[4]<=6;
+    o.typeKnown = o.isIIN || o.isBIN;
+  }
+
+  if(o.full){
+    const exp=controlDigit(num.slice(0,11));
+    o.checksum={expected:exp, actual:d[11], bothTen:exp===null, ok:(exp!==null && exp===d[11])};
+  }
+
+  if(o.isIIN){
+    if(o.len>=7){
+      o.seventh=d[6];
+      o.gender=(d[6]%2===1)?'M':'F';
+      const base=CENTURY[d[6]];
+      o.centuryBase=base||null; o.centuryKnown=!!base;
+    }
+    if(o.len>=6){
+      const yy=d[0]*10+d[1], mm=d[2]*10+d[3], dd=d[4]*10+d[5];
+      const monthOk=mm>=1&&mm<=12;
+      let dayOk=false,dateObj=null,year=null;
+      if(o.centuryKnown){
+        year=o.centuryBase+yy;
+        if(monthOk){ dateObj=new Date(year,mm-1,dd); dayOk=dateObj.getFullYear()===year&&dateObj.getMonth()===mm-1&&dateObj.getDate()===dd; }
+      }
+      let future=false,age=null;
+      if(dayOk){ const t=new Date(); future=dateObj>t; age=t.getFullYear()-year-((t.getMonth()<mm-1||(t.getMonth()===mm-1&&t.getDate()<dd))?1:0); }
+      o.birth={yy,mm,dd,year,monthOk,dayOk,future,age,valid:(o.centuryKnown&&monthOk&&dayOk)};
+    }
+  }
+
+  if(o.isBIN){
+    o.entityType = d[4]===4?'jur_res':d[4]===5?'jur_nres':'ip';
+    o.residency  = d[4]===4?'Резидент РК':d[4]===5?'Нерезидент РК':null;
+    if(o.len>=6){
+      o.sixth=d[5];
+      const stMap={0:'Головное подразделение',1:'Филиал',2:'Представительство',3:'КФХ (совм. предпринимательство)'};
+      o.orgStatusCode=d[5];
+      o.orgStatus=stMap[d[5]]||null; o.orgStatusKnown=!!stMap[d[5]];
+      o.kfhConsistent = !(d[5]===3 && d[4]!==6);
+      o.legalNotKfh   = !((d[4]===4||d[4]===5) && d[5]===3);
+    }
+    if(o.len>=4){
+      const yy=d[0]*10+d[1], mm=d[2]*10+d[3];
+      o.reg={yy,mm,monthOk:(mm>=1&&mm<=12)};
+    }
+  }
+  return o;
+}
+
+/* ===================== РЕНДЕР: карта цифр ===================== */
+function renderCells(o){
+  const cells=document.getElementById('cells');
+  const num=o.raw;
+  let segs=null;
+  if(o.typeKnown && o.isBIN) segs=[['date',0,3],['type',4,4],['flag',5,5],['serial',6,10],['ctrl',11,11]];
+  else if(o.typeKnown && o.isIIN) segs=[['date',0,5],['type',6,6],['serial',7,10],['ctrl',11,11]];
+  const segOf=i=>{ if(!segs) return ''; for(const[s,a,b] of segs) if(i>=a&&i<=b) return 'seg-'+s; return ''; };
+  let html='';
+  for(let i=0;i<12;i++){
+    const ch = i<num.length ? num[i] : '·';
+    const empty = i>=num.length ? ' empty':'';
+    html+=`<div class="cell ${segOf(i)}${empty}" data-i="${i}"><div class="box">${ch}</div><div class="pos">${i+1}</div></div>`;
+  }
+  cells.innerHTML=html;
+}
+function markBadCells(idxs){ idxs.forEach(i=>{const el=document.querySelector(`.cell[data-i="${i}"]`); if(el) el.classList.add('bad');}); }
+
+/* ===================== РЕНДЕР: расшифровка справа ===================== */
+function renderDecode(o){
+  const box=$('decode');
+  if(o.len===0){ box.className='decode idle'; box.textContent='Введите номер — здесь появится тип контрагента и все поля.'; return; }
+  box.className='decode';
+
+  const declType=$('type').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
+  const rows=[];
+  const push=(k,vHtml,status,note)=>rows.push(
+    `<div class="drow${status?' s-'+status:''}"><span class="dk">${k}</span><span class="dv">${vHtml}`+
+    `${status==='ok'?'<span class="tick">✓</span>':''}${note?`<span class="chip">${note}</span>`:''}</span></div>`);
+
+  /* Тип контрагента */
+  if(o.len>=5){
+    if(o.typeKnown){
+      const numType=o.isIIN?'fiz':o.entityType;
+      let st=null,note='';
+      if(declType){ if(declType===numType) st='ok'; else { st='warn'; note='анкета: '+TYPE_SHORT[declType]; } }
+      push('Тип контрагента', typeBadge(numType), st, note);
+    } else {
+      push('Тип контрагента', `<span class="muted-v">не определён · 5-я цифра ${o.fifth}</span>`, 'bad');
+    }
+  } else {
+    push('Тип контрагента', '<span class="muted-v">введите 5 цифр…</span>', null);
+  }
+
+  /* Физлицо */
+  if(o.isIIN && o.len>=7){
+    let gst=null,gnote='';
+    if(declG){ if(o.gender&&declG===o.gender) gst='ok'; else { gst='warn'; gnote='анкета: '+GEND_LABEL[declG]; } }
+    push('Пол', GEND_LABEL[o.gender]||'—', gst, gnote);
+
+    if(!o.centuryKnown) push('Дата рождения','<span class="muted-v">век не определён · 7-я цифра</span>','bad');
+    else if(o.birth && !o.birth.valid) push('Дата рождения','<span class="muted-v">несуществующая дата</span>','bad');
+    else if(o.birth){
+      const ds=fmtDate(o.birth.year,o.birth.mm,o.birth.dd)+(o.birth.age!=null?` · ${o.birth.age} л.`:'');
+      let st=null,note='';
+      if(o.birth.future){ st='bad'; }
+      else if(declD){ if(sameDate(declD,o)) st='ok'; else { st='warn'; const p=declD.split('-'); note='анкета: '+p[2]+'.'+p[1]+'.'+p[0]; } }
+      push('Дата рождения', `<span class="mono-v">${ds}</span>`, st, note);
+    }
+  }
+
+  /* Организация */
+  if(o.isBIN){
+    if(o.residency) push('Резидентство', o.residency, null);
+    if(o.len>=6){
+      if(!o.orgStatusKnown) push('Признак','<span class="muted-v">неизвестный код '+o.sixth+'</span>','bad');
+      else{
+        let st=null,note='';
+        if(declS!==''){ if(Number(declS)===o.orgStatusCode) st='ok'; else { st='warn'; note='анкета: '+ORG_SHORT[declS]; } }
+        push('Признак', o.orgStatus, st, note);
+      }
+    }
+    if(o.reg){
+      if(!o.reg.monthOk) push('Дата регистрации','<span class="muted-v">некорректный месяц</span>','bad');
+      else{
+        const rs=`${RU_MONTH[o.reg.mm-1]} ’${pad(o.reg.yy)}`;
+        let st=null,note='';
+        if(declR){ const rp=declR.split('-'); const ry=Number(rp[0]),rm=Number(rp[1]); if((ry%100)===o.reg.yy&&rm===o.reg.mm) st='ok'; else { st='warn'; note='анкета: '+pad(rm)+'.'+ry; } }
+        push('Дата регистрации', `<span class="mono-v">${rs}</span>`, st, note);
+      }
+    }
+  }
+
+  box.innerHTML=rows.join('');
+}
+
+/* ===================== ПРОВЕРКА ===================== */
+function syncGroups(o){
+  const declType=$('type').value;
+  let showFiz, showOrg;
+  if(o && o.typeKnown){ showFiz=o.isIIN; showOrg=o.isBIN; }
+  else{ showFiz=declType==='fiz'; showOrg=(declType==='jur_res'||declType==='jur_nres'||declType==='ip'); }
+  $('grp-fiz').classList.toggle('hidden', !showFiz);
+  $('grp-org').classList.toggle('hidden', !showOrg);
+}
+
+function validate(){
+  const o=decode($('num').value);
+  syncGroups(o);
+  renderCells(o);
+  ['f-type','f-gender','f-dob','f-orgstatus','f-reg'].forEach(id=>$(id).classList.remove('flag-bad','flag-ok'));
+  $('cnt').textContent=o.len;
+  $('numnote').classList.remove('show'); $('numnote').textContent='';
+
+  if(o.len===0){
+    $('num').className='num';
+    setVerdict('idle','Ожидание ввода','Введите номер — расшифровка появится здесь.');
+    renderDecode(o); return;
+  }
+  if(!o.full){
+    $('num').className='num';
+    setVerdict('wait','Вводится номер…',`Введено ${o.len} из 12 цифр.`);
+    renderDecode(o); return;
+  }
+
+  const declType=$('type').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
+  let numberBroken=false, structIssue=false, fieldMismatch=false, anketaFilled=false;
+  const badCells=[];
+
+  if(!o.checksum.ok){ numberBroken=true; badCells.push(11); }
+  if(!o.typeKnown){ structIssue=true; badCells.push(4); }
+
+  if(o.isIIN){
+    if(!o.centuryKnown){ structIssue=true; badCells.push(6); }
+    else if(!o.birth.valid){ structIssue=true; badCells.push(0,1,2,3,4,5); }
+    else if(o.birth.future){ structIssue=true; badCells.push(0,1,2,3,4,5); }
+    if(declType){ anketaFilled=true; if(declType==='fiz') flag('f-type',true); else { fieldMismatch=true; badCells.push(4); flag('f-type',false); } }
+    if(declG){ anketaFilled=true; if(o.gender&&declG===o.gender) flag('f-gender',true); else { fieldMismatch=true; badCells.push(6); flag('f-gender',false); } }
+    if(declD && o.birth && o.birth.valid){ anketaFilled=true; if(sameDate(declD,o)) flag('f-dob',true); else { fieldMismatch=true; badCells.push(0,1,2,3,4,5); flag('f-dob',false); } }
+  }
+
+  if(o.isBIN){
+    if(!o.legalNotKfh || !o.kfhConsistent){ structIssue=true; badCells.push(4,5); }
+    if(!o.orgStatusKnown){ structIssue=true; badCells.push(5); }
+    if(!o.reg.monthOk){ structIssue=true; badCells.push(2,3); }
+    if(declType){ anketaFilled=true; if(declType===o.entityType) flag('f-type',true); else { fieldMismatch=true; badCells.push(4); flag('f-type',false); } }
+    if(declS!=='' && o.orgStatusKnown){ anketaFilled=true; if(Number(declS)===o.orgStatusCode) flag('f-orgstatus',true); else { fieldMismatch=true; badCells.push(5); flag('f-orgstatus',false); } }
+    if(declR && o.reg.monthOk){ anketaFilled=true; const rp=declR.split('-'); const ry=Number(rp[0]),rm=Number(rp[1]); if((ry%100)===o.reg.yy&&rm===o.reg.mm) flag('f-reg',true); else { fieldMismatch=true; badCells.push(0,1,2,3); flag('f-reg',false); } }
+  }
+
+  $('num').className='num '+((numberBroken||structIssue)?'bad':(o.checksum.ok?'ok':''));
+  markBadCells([...new Set(badCells)]);
+
+  if(numberBroken || structIssue){
+    let reason;
+    if(!o.typeKnown) reason='5-я цифра вне диапазона 0–6.';
+    else if(o.isIIN && !o.centuryKnown) reason='7-я цифра не задаёт век.';
+    else if(o.isIIN && o.birth && !o.birth.valid) reason='В номере зашита несуществующая дата.';
+    else if(o.isIIN && o.birth && o.birth.future) reason='Дата рождения — в будущем.';
+    else if(o.isBIN && (!o.legalNotKfh||!o.kfhConsistent)) reason='Признак подразделения не согласуется с типом.';
+    else if(o.isBIN && !o.orgStatusKnown) reason='6-я цифра — неизвестный признак.';
+    else if(o.isBIN && o.reg && !o.reg.monthOk) reason='Некорректный месяц регистрации.';
+    else reason='Похоже на опечатку в номере.';
+    $('numnote').textContent = o.isIIN ? 'Неверный ИИН' : o.isBIN ? 'Неверный БИН' : 'Неверный ИИН / БИН';
+    $('numnote').classList.add('show');
+    setVerdict('red','Номер не проходит проверку', reason+' На выплату пускать нельзя.');
+  } else if(fieldMismatch){
+    setVerdict('amber','Поля анкеты расходятся','Сам номер корректен. Номер — источник истины: поправьте подсвеченные поля.');
+  } else if(anketaFilled){
+    setVerdict('green','Данные сходятся','Номер реален и совпадает с анкетой — можно отправлять на выплату.');
+  } else {
+    setVerdict('teal','Номер валиден','ИИН/БИН прошёл проверку. Заполните анкету слева, чтобы свериться.');
+  }
+
+  renderDecode(o);
+}
+
+function flag(id,ok){ $(id).classList.add(ok?'flag-ok':'flag-bad'); }
+function sameDate(iso,o){ const p=iso.split('-'); return Number(p[0])===o.birth.year && Number(p[1])===o.birth.mm && Number(p[2])===o.birth.dd; }
+
+function setVerdict(kind,title,desc){
+  const v=$('verdict');
+  const cls={green:'v-green',amber:'v-amber',red:'v-red',teal:'v-teal',wait:'v-wait',idle:'v-idle'}[kind];
+  const ico={green:'✓',amber:'!',red:'✕',teal:'i',wait:'…',idle:'·'}[kind];
+  v.className='verdict '+cls;
+  v.innerHTML=`<div class="vico">${ico}</div><div><div class="vt">${title}</div><div class="vd">${desc}</div></div>`;
+}
+
+/* ===================== СОБЫТИЯ ===================== */
+const $=id=>document.getElementById(id);
+$('num').addEventListener('input',e=>{
+  e.target.value=e.target.value.replace(/\D/g,'').slice(0,12);
+  validate();
+});
+['type','gender','dob','orgstatus','reg'].forEach(id=>$(id).addEventListener('input',validate));
+
+$('btn-clear').addEventListener('click',()=>{
+  ['num','gender','dob','orgstatus','reg'].forEach(id=>$(id).value='');
+  $('type').value='';
+  validate();
+  $('num').focus();
+});
+
+$('btn-fill').addEventListener('click',()=>{
+  const o=decode($('num').value);
+  if(!o.full){alert('Сначала введите полный 12-значный номер.');return;}
+  if(o.isIIN){
+    $('type').value='fiz';
+    $('gender').value=o.gender||'';
+    if(o.birth.valid) $('dob').value=`${o.birth.year}-${pad(o.birth.mm)}-${pad(o.birth.dd)}`;
+  }else if(o.isBIN){
+    $('type').value=o.entityType;
+    if(o.orgStatusKnown) $('orgstatus').value=String(o.orgStatusCode);
+  }
+  validate();
+});
+
+const EX={
+  fiz:   {num:'020518501477',type:'fiz',gender:'M',dob:'2002-05-18'},
+  jur:   {num:'150841000122',type:'jur_res',orgstatus:'1',reg:'2015-08-10'},
+  ip:    {num:'210363000128',type:'ip',orgstatus:'3',reg:'2021-03-15'},
+  broken:{num:'020518501476',type:'fiz',gender:'M',dob:'2002-05-18'},
+  mism:  {num:'020518501477',type:'fiz',gender:'F',dob:'2002-05-18'}
+};
+document.querySelectorAll('[data-ex]').forEach(b=>b.addEventListener('click',()=>{
+  const e=EX[b.dataset.ex];
+  ['num','type','gender','dob','orgstatus','reg'].forEach(id=>$(id).value=e[id]||'');
+  validate();
+}));
+
+validate();
+</script>
+</body>
+</html>
