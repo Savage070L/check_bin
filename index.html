@@ -129,6 +129,43 @@
   .b-res{background:var(--accent-soft);color:var(--accent)}
   .b-nonres{background:var(--warn-soft);color:var(--warn)}
 
+  /* suggestions ("возможно, имелось в виду") */
+  .suggest{margin-top:16px;padding-top:16px;border-top:1px solid var(--line);display:none}
+  .suggest.show{display:block;animation:fade .22s ease}
+  .sg-hd{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:11px}
+  .sg-grp{margin-bottom:13px}
+  .sg-grp:last-of-type{margin-bottom:0}
+  .sg-tag{font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:7px;display:flex;align-items:baseline;gap:8px}
+  .sg-note{font-weight:500;font-size:11.5px;color:var(--faint)}
+  .sg-filter{font-weight:600;font-size:10.5px;letter-spacing:0;text-transform:none;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:6px;margin-left:7px}
+  .sg-empty{font-size:12px;color:var(--muted);line-height:1.55}
+  .sg-items{display:flex;flex-direction:column;gap:6px}
+  .sg-items.sg-scroll{max-height:340px;overflow-y:auto;padding:2px 6px 2px 2px}
+  .sg-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;cursor:pointer;transition:.15s}
+  .sg-item:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .sg-num{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:500;letter-spacing:2px;color:var(--ink-2)}
+  .sg-num b{color:var(--accent);font-weight:700}
+  .sg-sum{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap}
+  .sg-swap{color:var(--accent);font-weight:600}
+  .sg-hint{font-size:11.5px;color:var(--faint);margin-top:11px}
+  /* карточка-наименование (поиск по имени через adata.kz) */
+  .sg-name{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:5px}
+  .sg-title{display:flex;align-items:baseline;gap:7px;font-size:14px;font-weight:600;color:var(--ink);line-height:1.3}
+  .sg-kind{flex:none;font-size:10px;font-weight:700;letter-spacing:.03em;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:5px;align-self:flex-start}
+  .sg-sub{display:flex;align-items:center;gap:10px}
+  .sg-num-sm{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:1.5px;color:var(--muted)}
+  .sg-num-sm b{color:var(--accent);font-weight:700}
+  .sg-dist{font-size:10.5px;color:var(--faint)}
+  .sg-loading{cursor:default}
+  .sg-loading:hover{border-color:var(--line);background:#fff}
+  .sg-skel{color:var(--faint);font-weight:500;font-style:italic}
+  .sg-status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin-top:11px}
+  .sg-note2{font-size:12px;color:var(--muted);margin-top:11px;line-height:1.5}
+  .sg-more{margin-top:11px;width:100%;padding:8px 12px;border:1px dashed var(--line);border-radius:9px;background:#fff;cursor:pointer;font-size:12px;font-weight:600;color:var(--accent);transition:.15s}
+  .sg-more:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .sg-toggle{margin-top:13px;width:100%;padding:7px 12px;border:1px solid var(--line-2);border-radius:9px;background:#fff;cursor:pointer;font-size:11.5px;font-weight:500;color:var(--muted);transition:.15s}
+  .sg-toggle:hover{color:var(--accent);border-color:var(--accent)}
+
   /* registry (live data from stat.gov.kz + e-Qazyna) */
   .registry{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:none}
   .registry.show{display:block;animation:fade .22s ease}
@@ -140,6 +177,8 @@
   .badge-gov{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:13px;font-weight:700}
   .gov-no{background:var(--ok-soft);color:var(--ok)}
   .gov-yes{background:var(--warn-soft);color:var(--warn)}
+  .reg-link{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+  .reg-link:hover{border-bottom-color:currentColor}
   .reg-note{font-size:11.5px;color:var(--faint);margin-top:8px;display:flex;align-items:center;gap:6px}
   .reg-note::before{content:"i";display:grid;place-items:center;width:15px;height:15px;border-radius:50%;background:#E7EAEE;color:var(--muted);font-size:10px;font-weight:700;font-family:"IBM Plex Mono",monospace;flex:none}
 
@@ -188,15 +227,6 @@
               <option value="fiz">Физическое лицо</option>
               <option value="jur">Юр. лицо</option>
               <option value="ip">ИП / КФХ</option>
-            </select>
-          </div>
-
-          <div class="field hidden" id="f-residency">
-            <label class="fld" for="residency">Резидентство</label>
-            <select id="residency">
-              <option value="">— не указано —</option>
-              <option value="res">Резидент РК</option>
-              <option value="nres">Нерезидент РК</option>
             </select>
           </div>
 
@@ -272,6 +302,7 @@
             <div class="vd">Введите номер — расшифровка появится здесь.</div>
           </div>
         </div>
+        <div class="suggest" id="suggest"></div>
         <div class="decode idle" id="decode">Введите номер — здесь появится тип контрагента и все поля.</div>
         <div class="registry" id="registry"></div>
       </div>
@@ -353,7 +384,6 @@ function decode(num){
 
   if(o.isBIN){
     o.entityType = d[4]===4?'jur_res':d[4]===5?'jur_nres':'ip';
-    o.residency  = d[4]===4?'Резидент РК':d[4]===5?'Нерезидент РК':null;
     if(o.len>=6){
       o.sixth=d[5];
       const stMap={0:'Головное подразделение',1:'Филиал',2:'Представительство',3:'КФХ (совм. предпринимательство)'};
@@ -361,6 +391,9 @@ function decode(num){
       o.orgStatus=stMap[d[5]]||null; o.orgStatusKnown=!!stMap[d[5]];
       o.kfhConsistent = !(d[5]===3 && d[4]!==6);
       o.legalNotKfh   = !((d[4]===4||d[4]===5) && d[5]===3);
+      // Резидентство достоверно по БИН не определить. Грубая оценка по форме:
+      // филиал (6-я=1) / представительство (6-я=2) — чаще подразделения иностранных компаний → возможно нерезидент.
+      o.residencyGuess = o.orgStatusKnown ? ((d[5]===1||d[5]===2)?'nonres':'res') : null;
     }
     if(o.len>=4){
       const yy=d[0]*10+d[1], mm=d[2]*10+d[3];
@@ -379,7 +412,7 @@ function renderDecode(o){
   if(o.len===0){ box.className='decode idle'; box.textContent='Введите номер — здесь появится тип контрагента и все поля.'; return; }
   box.className='decode';
 
-  const declType=$('type').value, declRes=$('residency').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
+  const declType=$('type').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
   const rows=[];
   const push=(k,vHtml,status,note)=>rows.push(
     `<div class="drow${status?' s-'+status:''}"><span class="dk">${k}</span><span class="dv">${vHtml}`+
@@ -388,8 +421,14 @@ function renderDecode(o){
   /* Тип контрагента */
   if(o.len>=5){
     if(o.typeKnown){
-      // ИИН, найденный в stat.gov.kz, — это зарегистрированный ИП, а не просто физлицо.
-      const ipFromRegistry = o.isIIN && _regBin===o.raw && _reg && _reg.sg && _reg.sg.state==='ok';
+      // Тип «ИП или просто физлицо» определяем ПЕРВИЧНО по adata.kz: есть карточка → ИП;
+      // ничего нет → обычное физлицо. Если adata недоступна (нет расширения/ошибка) —
+      // резерв на присутствие в stat.gov.kz.
+      const ad = (o.isIIN && _regBin===o.raw && _reg && _reg.ad) ? _reg.ad : null;
+      const adIsIP = ad && ad.state==='ok' && ad.data && ad.data.found && (ad.data.kind==='ИП' || ad.data.kind==null);
+      const adUnavailable = !ad || ad.state==='loading' || ad.state==='err';
+      const sgIsIP = o.isIIN && _regBin===o.raw && _reg && _reg.sg && _reg.sg.state==='ok';
+      const ipFromRegistry = !!(adIsIP || (adUnavailable && sgIsIP));
       const numBroad = ipFromRegistry ? 'ip' : (o.isIIN ? 'fiz' : (o.entityType==='ip' ? 'ip' : 'jur'));
       const badgeHtml = ipFromRegistry
         ? '<span class="badge b-ip">ИП (Индивидуальный Предприниматель)</span>'
@@ -423,18 +462,18 @@ function renderDecode(o){
 
   /* Организация */
   if(o.isBIN){
-    if(o.residency){
-      const numRes=o.entityType==='jur_res'?'res':'nres';
-      let rst=null,rnote='';
-      if(declRes){ if(declRes===numRes) rst='ok'; else { rst='warn'; rnote='анкета: '+(declRes==='res'?'резидент РК':'нерезидент РК'); } }
-      push('Резидентство', `<span class="badge ${numRes==='res'?'b-res':'b-nonres'}">${o.residency}</span>`, rst, rnote);
-    }
     if(o.len>=6){
       if(!o.orgStatusKnown) push('Признак','<span class="muted-v">неизвестный код '+o.sixth+'</span>','bad');
       else{
         let st=null,note='';
         if(declS!==''){ if(Number(declS)===o.orgStatusCode) st='ok'; else { st='warn'; note='анкета: '+ORG_SHORT[declS]; } }
         push('Признак', o.orgStatus, st, note);
+      }
+      if(o.residencyGuess){
+        const nonres=o.residencyGuess==='nonres';
+        push('Резидентство',
+          nonres?'<span class="badge b-nonres">Возможно нерезидент</span>':'<span class="badge b-res">Резидент РК</span>',
+          null, 'оценка по форме');
       }
     }
     if(o.reg){
@@ -454,38 +493,35 @@ function renderDecode(o){
 /* ===================== ПРОВЕРКА ===================== */
 function syncGroups(o){
   const declType=$('type').value;
-  let showFiz, showOrg, showRes;
+  let showFiz, showOrg;
   if(o && o.typeKnown){
     showFiz=o.isIIN; showOrg=o.isBIN;
-    showRes=o.isBIN && (o.entityType==='jur_res'||o.entityType==='jur_nres');
   } else {
     showFiz=declType==='fiz'; showOrg=(declType==='jur'||declType==='ip');
-    showRes=declType==='jur';
   }
   $('grp-fiz').classList.toggle('hidden', !showFiz);
   $('grp-org').classList.toggle('hidden', !showOrg);
-  $('f-residency').classList.toggle('hidden', !showRes);
 }
 
 function validate(){
   const o=decode($('num').value);
   syncGroups(o);
-  ['f-type','f-residency','f-gender','f-dob','f-orgstatus','f-reg'].forEach(id=>$(id).classList.remove('flag-bad','flag-ok'));
+  ['f-type','f-gender','f-dob','f-orgstatus','f-reg'].forEach(id=>$(id).classList.remove('flag-bad','flag-ok'));
   $('cnt').textContent=o.len;
   $('numnote').classList.remove('show'); $('numnote').textContent='';
 
   if(o.len===0){
     $('num').className='num';
     setVerdict('idle','Ожидание ввода','Введите номер — расшифровка появится здесь.');
-    renderDecode(o); clearRegistry(); return;
+    renderDecode(o); clearRegistry(); clearSuggest(); return;
   }
   if(!o.full){
     $('num').className='num';
     setVerdict('wait','Вводится номер…',`Введено ${o.len} из 12 цифр.`);
-    renderDecode(o); clearRegistry(); return;
+    renderDecode(o); clearRegistry(); clearSuggest(); return;
   }
 
-  const declType=$('type').value, declRes=$('residency').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
+  const declType=$('type').value, declG=$('gender').value, declD=$('dob').value, declS=$('orgstatus').value, declR=$('reg').value;
   let numberBroken=false, structIssue=false, fieldMismatch=false, anketaFilled=false;
 
   if(!o.checksum.ok){ numberBroken=true; }
@@ -505,7 +541,6 @@ function validate(){
     if(!o.orgStatusKnown){ structIssue=true; }
     if(!o.reg.monthOk){ structIssue=true; }
     if(declType){ anketaFilled=true; const numBroad=o.entityType==='ip'?'ip':'jur'; if(declType===numBroad) flag('f-type',true); else { fieldMismatch=true; flag('f-type',false); } }
-    if(declRes && o.residency){ anketaFilled=true; const numRes=o.entityType==='jur_res'?'res':'nres'; if(declRes===numRes) flag('f-residency',true); else { fieldMismatch=true; flag('f-residency',false); } }
     if(declS!=='' && o.orgStatusKnown){ anketaFilled=true; if(Number(declS)===o.orgStatusCode) flag('f-orgstatus',true); else { fieldMismatch=true; flag('f-orgstatus',false); } }
     if(declR && o.reg.monthOk){ anketaFilled=true; const rp=declR.split('-'); const ry=Number(rp[0]),rm=Number(rp[1]); if((ry%100)===o.reg.yy&&rm===o.reg.mm) flag('f-reg',true); else { fieldMismatch=true; flag('f-reg',false); } }
   }
@@ -533,6 +568,7 @@ function validate(){
     setVerdict('teal','Номер валиден','ИИН/БИН прошёл проверку. Заполните анкету слева, чтобы свериться.');
   }
 
+  if(numberBroken || structIssue) renderSuggest(o); else clearSuggest();
   renderDecode(o);
 
   // Валидный ИИН или БИН (номер не сломан) — подтягиваем данные из реестров.
@@ -551,6 +587,230 @@ function setVerdict(kind,title,desc){
   v.className='verdict '+cls;
   v.innerHTML=`<div class="vico">${ico}</div><div><div class="vt">${title}</div><div class="vd">${desc}</div></div>`;
 }
+
+/* ===================== ПОДСКАЗКИ: «возможно, имелось в виду» ===================== */
+// При некорректном 12-значном номере перебираем близкие варианты (замена цифр) и
+// показываем структурно валидные кандидаты, сгруппированные по числу изменённых
+// цифр: 1 цифра — вероятнее всего, дальше — менее вероятно. В каждой группе сверху —
+// самые правдоподобные опечатки (мелкое отклонение цифры, перестановка соседних).
+// Клик подставляет номер и запускает проверку по реестрам.
+let _sugNum=null, _sugGroups=null;
+// ——— Поиск наименований по вероятным номерам через adata.kz (расширение-мост) ———
+const ADATA_AUTO=12, ADATA_STEP=12, ADATA_PAR=4;   // авто-проверка самых вероятных (≥10); шаг кнопки; параллельных запросов
+const _adataCache=new Map();                        // bin -> {state:'pending'|'ok'|'empty'|'err', data?, error?, ext?}
+let _adataQueue=[], _adataInflight=0, _sugRerenderTimer=null;
+let _sugBudget=ADATA_AUTO, _sugLookupNum=null, _sugShowNumbers=false, _adataExtMissing=false;
+function _scheduleSugRerender(){
+  if(_sugRerenderTimer) return;
+  _sugRerenderTimer=setTimeout(()=>{ _sugRerenderTimer=null; if(_lastO && _lastO.raw===_sugLookupNum) renderSuggest(_lastO); },60);
+}
+function _adataPump(){
+  while(_adataInflight<ADATA_PAR && _adataQueue.length){
+    const bin=_adataQueue.shift(); _adataInflight++;
+    StatGovClient.adata(bin)
+      .then(data=>{ _adataCache.set(bin,(data&&data.found===false)?{state:'empty'}:{state:'ok',data}); })
+      .catch(e=>{
+        const msg=(e&&e.message)||''; const miss=/extension-missing|Расширени|установ/i.test(msg);
+        if(miss){ _adataExtMissing=true; _adataCache.set(bin,{state:'err',ext:true}); _adataQueue.length=0; }
+        else _adataCache.set(bin,{state:'err',error:msg});
+      })
+      .finally(()=>{ _adataInflight--; _scheduleSugRerender(); _adataPump(); });
+  }
+}
+function ensureAdata(bin){ if(_adataCache.has(bin)) return; _adataCache.set(bin,{state:'pending'}); _adataQueue.push(bin); _adataPump(); }
+
+function ctrlFast(d){           // контрольная цифра по массиву (без аллокаций строк)
+  let s=0; for(let i=0;i<11;i++) s+=d[i]*W1[i];
+  let k=s%11;
+  if(k===10){ s=0; for(let i=0;i<11;i++) s+=d[i]*W2[i]; k=s%11; if(k===10) return -1; }
+  return k;
+}
+function structurallyValid(o){  // номер «реален»: те же условия, что и у зелёного вердикта
+  if(!o.full || !o.checksum.ok || !o.typeKnown) return false;
+  if(o.isIIN) return !!(o.centuryKnown && o.birth && o.birth.valid && !o.birth.future);
+  if(o.isBIN) return !!(o.legalNotKfh && o.kfhConsistent && o.orgStatusKnown && o.reg && o.reg.monthOk);
+  return false;
+}
+// Отсев заведомо нереальных кандидатов в подсказках (на сам вердикт не влияет):
+// физлицо старше 70 лет — вряд ли действующий клиент; БИН не может быть раньше 2001 («00…»).
+const SUGGEST_MAX_AGE=70, SUGGEST_MIN_BIN_YEAR=2001;
+function plausibleClient(o){
+  if(o.isIIN) return !!(o.birth && o.birth.age!=null && o.birth.age<=SUGGEST_MAX_AGE);
+  if(o.isBIN) return !!(o.reg && o.reg.year>=SUGGEST_MIN_BIN_YEAR);
+  return true;
+}
+function suggestCandidates(num){
+  if(num===_sugNum) return _sugGroups;          // кэш: анкета меняется — номер тот же
+  const od=[...num].map(Number), d=od.slice();
+  const groups={1:[],2:[],3:[]};
+  const consider=changed=>{
+    const dist=changed.length;
+    if(ctrlFast(d)!==d[11] || d[4]>6) return;   // дешёвый фильтр до полной расшифровки
+    const o2=decode(d.join(''));
+    if(!structurallyValid(o2) || !plausibleClient(o2)) return;
+    let swap=false;
+    if(dist===2){ const i=changed[0],j=changed[1]; if(j===i+1 && d[i]===od[j] && d[j]===od[i]) swap=true; }
+    let sc=0; for(const p of changed) sc+=Math.abs(d[p]-od[p]);
+    if(swap) sc=-100;                            // перестановка соседних — самая частая опечатка
+    groups[dist].push({cand:o2.raw,o:o2,swap,score:sc});
+  };
+  // 1 цифра
+  for(let i=0;i<12;i++){ const oi=d[i];
+    for(let a=0;a<=9;a++){ if(a!==oi){ d[i]=a; consider([i]); } }
+    d[i]=oi;
+  }
+  // 2 цифры
+  for(let i=0;i<12;i++)for(let j=i+1;j<12;j++){ const oi=d[i],oj=d[j];
+    for(let a=0;a<=9;a++){ if(a===oi)continue; d[i]=a;
+      for(let b=0;b<=9;b++){ if(b!==oj){ d[j]=b; consider([i,j]); } }
+    }
+    d[i]=oi; d[j]=oj;
+  }
+  // 3 цифры — перебираем полностью (без лимита: показываем все вариации)
+  for(let i=0;i<12;i++){ for(let j=i+1;j<12;j++){ for(let k=j+1;k<12;k++){
+    const oi=d[i],oj=d[j],ok=d[k];
+    for(let a=0;a<=9;a++){ if(a===oi)continue; d[i]=a;
+      for(let b=0;b<=9;b++){ if(b===oj)continue; d[j]=b;
+        for(let c=0;c<=9;c++){ if(c===ok)continue; d[k]=c;
+          consider([i,j,k]);
+        }
+      }
+    }
+    d[i]=oi; d[j]=oj; d[k]=ok;
+  }}}
+  for(const g of [1,2,3]) groups[g].sort((x,y)=> x.score-y.score || (x.cand<y.cand?-1:1));
+  _sugNum=num; _sugGroups=groups;
+  return groups;
+}
+function suggestSummary(o){
+  if(o.isIIN) return fmtDate(o.birth.year,o.birth.mm,o.birth.dd)+' · '+(o.gender==='M'?'М':'Ж');
+  if(o.isBIN){
+    const kind=o.entityType==='ip'?'ИП':'юр. лицо';
+    return kind+(o.reg&&o.reg.monthOk?` · ${RU_MONTH[o.reg.mm-1].slice(0,3)} ${o.reg.year}`:'');
+  }
+  return '';
+}
+function suggestNum(cand,od){
+  let h=''; for(let i=0;i<12;i++) h+= (Number(cand[i])!==od[i]) ? `<b>${cand[i]}</b>` : cand[i];
+  return h;
+}
+function plural(n,one,few,many){ const a=n%10,b=n%100; return (a===1&&b!==11)?one:(a>=2&&a<=4&&(b<10||b>20))?few:many; }
+// Список «номера-варианты» (прежнее поведение) — для запасного режима и тоггла «показать номера».
+function sugNumberGroups(view, od){
+  const LABEL={1:'1 цифра',2:'2 цифры',3:'3 цифры'};
+  const NOTE={1:'вероятнее всего',2:'менее вероятно',3:'маловероятно'};
+  let html='';
+  for(const dist of [1,2,3]){
+    const arr=view[dist]; if(!arr.length) continue;
+    const cnt=`${arr.length} ${plural(arr.length,'вариант','варианта','вариантов')}`;
+    const scroll=arr.length>14?' sg-scroll':'';
+    html+=`<div class="sg-grp"><div class="sg-tag">${LABEL[dist]} <span class="sg-note">${NOTE[dist]} · ${cnt}</span></div><div class="sg-items${scroll}">`;
+    html+=arr.map(it=>
+      `<button class="sg-item" data-cand="${it.cand}"><span class="sg-num">${suggestNum(it.cand,od)}</span>`+
+      `<span class="sg-sum">${suggestSummary(it.o)}${it.swap?' · <span class="sg-swap">перестановка</span>':''}</span></button>`
+    ).join('');
+    html+='</div></div>';
+  }
+  return html;
+}
+function renderSuggest(o){
+  const box=$('suggest'); if(!box) return;
+  const num=o.raw;
+  if(!num || num.length!==12){ clearSuggest(); return; }
+  const groups=suggestCandidates(num);
+  const rawTotal=groups[1].length+groups[2].length+groups[3].length;
+  if(!rawTotal){ clearSuggest(); return; }
+  const od=[...num].map(Number);
+
+  // Сброс поиска имён при смене номера.
+  if(num!==_sugLookupNum){ _sugLookupNum=num; _sugBudget=ADATA_AUTO; _sugShowNumbers=false; _adataExtMissing=false; }
+  if(StatGovClient._ready && _adataExtMissing){ _adataExtMissing=false; for(const [k,v] of _adataCache){ if(v.state==='err'&&v.ext) _adataCache.delete(k); } }
+
+  // Фильтр по типу контрагента (селект «Тип»).
+  const want=$('type').value;
+  const WLABEL={fiz:'Физ. лицо',jur:'Юр. лицо',ip:'ИП / КФХ'};
+  const keep=oc=>{
+    if(!want) return true;
+    if(want==='fiz') return oc.isIIN;
+    if(want==='jur') return oc.isBIN && oc.entityType!=='ip';
+    if(want==='ip')  return oc.isBIN && oc.entityType==='ip';
+    return true;
+  };
+  const view={1:groups[1].filter(it=>keep(it.o)),2:groups[2].filter(it=>keep(it.o)),3:groups[3].filter(it=>keep(it.o))};
+  const shownN=view[1].length+view[2].length+view[3].length;
+
+  let html=`<div class="sg-hd">Возможно, имелось в виду${want?` <span class="sg-filter">только ${WLABEL[want]}</span>`:''}</div>`;
+  if(!shownN){
+    html+=`<div class="sg-empty">Среди правдоподобных вариантов нет типа «${WLABEL[want]}». Снимите фильтр «Тип», чтобы увидеть остальные ${rawTotal} ${plural(rawTotal,'вариант','варианта','вариантов')}.</div>`;
+    box.innerHTML=html; box.classList.add('show'); return;
+  }
+
+  // Кандидаты по убыванию вероятности (1→2→3 ошибки), с пометкой расстояния.
+  const ordered=[]; for(const dist of [1,2,3]) for(const it of view[dist]) ordered.push({it,dist});
+  const budget=Math.min(_sugBudget, ordered.length);
+  const slice=ordered.slice(0,budget);
+
+  // Фоновые проверки наименований в adata.kz по самым вероятным номерам.
+  if(!_adataExtMissing) for(const r of slice) ensureAdata(r.it.cand);
+
+  // Расширение не отвечает → запасной режим: показываем номера-варианты.
+  if(_adataExtMissing){
+    html+=`<div class="sg-note2">Наименования тянутся через расширение‑мост (adata.kz), но оно сейчас не отвечает. Показаны номера‑варианты — установите/включите расширение, чтобы видеть имена.</div>`;
+    html+=sugNumberGroups(view, od);
+    html+=`<div class="sg-hint">Клик подставит номер и проверит по реестрам.</div>`;
+    box.innerHTML=html; box.classList.add('show'); return;
+  }
+
+  const LABEL={1:'1 цифра',2:'2 цифры',3:'3 цифры'};
+  let namedCount=0, doneCount=0, unnamedCount=0, rows=0, cards='';
+  for(const r of slice){
+    const c=_adataCache.get(r.it.cand);
+    const numSm=`<span class="sg-num-sm">${suggestNum(r.it.cand,od)}</span>`;
+    const distChip=`<span class="sg-dist">${LABEL[r.dist]}${r.it.swap?' · перестановка':''}</span>`;
+    if(c && c.state==='ok'){
+      namedCount++; doneCount++; rows++;
+      const d=c.data;
+      const kind=d.kind?`<span class="sg-kind">${escH(d.kind)}</span>`:'';
+      const title=escH(d.name||d.title||'без названия');
+      cards+=`<button class="sg-item sg-name" data-cand="${r.it.cand}"><span class="sg-title">${kind}<span>${title}</span></span><span class="sg-sub">${numSm}${distChip}</span></button>`;
+    } else if(c && (c.state==='empty' || (c.state==='err'&&!c.ext))){
+      doneCount++; unnamedCount++;   // без карточки в adata → скрываем из списка имён
+    } else {
+      rows++;
+      cards+=`<div class="sg-item sg-loading"><span class="sg-title sg-skel">ищу наименование…</span><span class="sg-sub">${numSm}${distChip}</span></div>`;
+    }
+  }
+  const stillLoading=slice.length-doneCount;
+
+  if(rows>0){
+    const scroll=rows>14?' sg-scroll':'';
+    html+=`<div class="sg-items${scroll}">${cards}</div>`;
+  }
+
+  if(stillLoading>0){
+    html+=`<div class="sg-status"><span class="dot"></span>Проверяю наименования в adata.kz… ${doneCount}/${slice.length}</div>`;
+  } else if(namedCount===0){
+    html+=`<div class="sg-empty">Среди ${slice.length} самых вероятных номеров ни один не зарегистрирован в adata.kz — похоже, это обычные физлица (в adata только ИП и компании). Ниже — номера‑варианты.</div>`;
+    html+=sugNumberGroups(view, od);
+  } else if(unnamedCount>0){
+    html+=`<div class="sg-note2">Найдено имён: ${namedCount}. Ещё ${unnamedCount} проверено — без карточки в adata (физлица или не найдены).</div>`;
+  }
+
+  if(ordered.length>budget){
+    const more=Math.min(ADATA_STEP, ordered.length-budget);
+    html+=`<button class="sg-more" data-more="1">Найти ещё имена (+${more}, осталось ${ordered.length-budget})</button>`;
+  }
+
+  if(namedCount>0){
+    html+= _sugShowNumbers
+      ? `<button class="sg-toggle" data-numbers="1">Скрыть номера‑варианты</button>`+sugNumberGroups(view, od)
+      : `<button class="sg-toggle" data-numbers="1">Показать все номера‑варианты (${shownN})</button>`;
+  }
+
+  html+=`<div class="sg-hint">Имена — из adata.kz по самым вероятным номерам. Клик по карточке подставит номер и проверит по всем реестрам.</div>`;
+  box.innerHTML=html; box.classList.add('show');
+}
+function clearSuggest(){ const box=$('suggest'); if(box){ box.classList.remove('show'); box.innerHTML=''; } }
 
 /* ===================== РЕЕСТРЫ: stat.gov.kz + e-Qazyna ===================== */
 // stat.gov.kz тянет chrome-расширение (папка chrome-extension/): оно инжектит
@@ -597,6 +857,43 @@ const StatGovClient={
       window.postMessage({source:StatGovClient.SOURCE_APP,type:'STATGOV_LOOKUP',requestId,bin},'*');
       setTimeout(()=>{ if(done) return; window.removeEventListener('message',h); reject(new Error('Таймаут stat.gov.kz')); },StatGovClient._timeout);
     });
+  },
+  // ba.prg.kz — контакты (e-mail/телефон) и наименование через фоновую вкладку.
+  // Дольше stat.gov: расширение открывает вкладку, ищет, ждёт рендера SPA.
+  async baprg(bin){
+    if(!StatGovClient._ready){ const p=await StatGovClient.ping(); if(!p.ok) throw new Error('extension-missing'); }
+    const requestId='baprg-'+Math.random().toString(36).slice(2);
+    return new Promise((resolve,reject)=>{
+      let done=false;
+      const h=ev=>{
+        if(ev.source!==window) return;
+        const d=ev.data;
+        if(!d||d.source!==StatGovClient.SOURCE_BRIDGE||d.type!=='BAPRG_LOOKUP_RESULT'||d.requestId!==requestId) return;
+        done=true; window.removeEventListener('message',h);
+        if(d.ok) resolve(d.data); else reject(new Error(d.error||'Ошибка моста'));
+      };
+      window.addEventListener('message',h);
+      window.postMessage({source:StatGovClient.SOURCE_APP,type:'BAPRG_LOOKUP',requestId,bin},'*');
+      setTimeout(()=>{ if(done) return; window.removeEventListener('message',h); reject(new Error('Таймаут ba.prg.kz')); },60000);
+    });
+  },
+  // adata.kz — первичное «ИП или просто физлицо» (фоновый fetch в расширении).
+  async adata(bin){
+    if(!StatGovClient._ready){ const p=await StatGovClient.ping(); if(!p.ok) throw new Error('extension-missing'); }
+    const requestId='adata-'+Math.random().toString(36).slice(2);
+    return new Promise((resolve,reject)=>{
+      let done=false;
+      const h=ev=>{
+        if(ev.source!==window) return;
+        const d=ev.data;
+        if(!d||d.source!==StatGovClient.SOURCE_BRIDGE||d.type!=='ADATA_LOOKUP_RESULT'||d.requestId!==requestId) return;
+        done=true; window.removeEventListener('message',h);
+        if(d.ok) resolve(d.data); else reject(new Error(d.error||'Ошибка моста'));
+      };
+      window.addEventListener('message',h);
+      window.postMessage({source:StatGovClient.SOURCE_APP,type:'ADATA_LOOKUP',requestId,bin},'*');
+      setTimeout(()=>{ if(done) return; window.removeEventListener('message',h); reject(new Error('Таймаут adata.kz')); },15000);
+    });
   }
 };
 StatGovClient.init();
@@ -613,13 +910,23 @@ function clearRegistry(){
 function registryLookup(bin){
   if(bin===_regBin){ renderRegistry(); return; }   // этот БИН уже запрошен/в полёте
   _regBin=bin;
-  _reg={bin, sg:{state:'loading'}, wk:{state:'loading'}};
+  _reg={bin, sg:{state:'loading'}, wk:{state:'loading'}, bp:{state:'loading'}, ad:{state:'loading'}};
   renderRegistry();
+  // adata.kz — ПЕРВИЧНОЕ «ИП или физлицо» (определяет тип контрагента)
+  StatGovClient.adata(bin)
+    .then(data=>{ if(_regBin!==bin) return; _reg.ad=(data&&data.found===false)?{state:'empty'}:{state:'ok',data}; })
+    .catch(e=>{ if(_regBin!==bin) return; _reg.ad={state:'err',error:e.message}; })
+    .finally(()=>{ if(_regBin!==bin) return; renderRegistry(); if(_lastO && _lastO.raw===bin) renderDecode(_lastO); });
   // stat.gov.kz — данные компании через расширение-мост
   StatGovClient.lookup(bin)
     .then(data=>{ if(_regBin!==bin) return; _reg.sg=(data&&data.found===false)?{state:'empty'}:{state:'ok',data}; })
     .catch(e=>{ if(_regBin!==bin) return; _reg.sg={state:'err',error:e.message}; })
     .finally(()=>{ if(_regBin!==bin) return; renderRegistry(); if(_lastO && _lastO.raw===bin) renderDecode(_lastO); });
+  // ba.prg.kz — контакты (e-mail/телефон) + наименование через фоновую вкладку
+  StatGovClient.baprg(bin)
+    .then(data=>{ if(_regBin!==bin) return; _reg.bp=(data&&data.found===false)?{state:'empty'}:{state:'ok',data}; })
+    .catch(e=>{ if(_regBin!==bin) return; _reg.bp={state:'err',error:e.message}; })
+    .finally(()=>{ if(_regBin!==bin) return; renderRegistry(); });
   // e-Qazyna гос. участие + адрес через Cloudflare Worker
   const ctrl=new AbortController();
   const to=setTimeout(()=>ctrl.abort(),20000);
@@ -644,42 +951,53 @@ function renderRegistry(){
   const el=$('registry');
   if(!_reg){ el.classList.remove('show'); el.innerHTML=''; return; }
   el.classList.add('show');
-  const sg=_reg.sg, wk=_reg.wk;
+  const sg=_reg.sg, wk=_reg.wk, bp=_reg.bp||{state:'idle'}, ad=_reg.ad||{state:'idle'};
   const sgD = sg.state==='ok'?sg.data:null;
   const wkA = (wk.state==='ok'&&wk.data)?wk.data.address:null;
-  const live = sg.state==='loading'||wk.state==='loading';
+  const bpD = (bp.state==='ok'&&bp.data&&bp.data.found!==false)?bp.data:null;
+  const adD = (ad.state==='ok'&&ad.data&&ad.data.found!==false)?ad.data:null;
+  const live = sg.state==='loading'||wk.state==='loading'||bp.state==='loading'||ad.state==='loading';
+  const bpLive = bp.state==='loading';
 
   const rows=[];
   const push=(k,vHtml)=>{ if(vHtml!=null) rows.push(`<div class="drow"><span class="dk">${k}</span><span class="dv">${vHtml}</span></div>`); };
-  const v=(primary,fallback,loading)=>{
-    const p=(primary!=null&&String(primary).trim()!=='')?primary:null;
-    const f=(fallback!=null&&String(fallback).trim()!=='')?fallback:null;
-    if(p) return escH(p);
-    if(f) return escH(f);
-    if(loading) return '<span class="muted-v">запрос…</span>';
-    return null;
+  // первый непустой источник из списка, иначе «запрос…» (если ещё грузится), иначе null
+  const vN=(arr,loading)=>{
+    for(const x of arr){ if(x!=null && String(x).trim()!=='') return escH(x); }
+    return loading?'<span class="muted-v">запрос…</span>':null;
+  };
+  // контакты ba.prg.kz: «a@b.kz; c@d.kz» → кликабельные mailto/tel
+  const contacts=(val,scheme)=>{
+    const s=(val!=null&&String(val).trim()!=='')?String(val):null;
+    if(s) return s.split(/;\s*/).filter(Boolean).map(p=>{
+      const href = scheme==='tel:' ? 'tel:'+p.replace(/[^\d+]/g,'') : 'mailto:'+p;
+      return `<a class="reg-link" href="${escH(href)}">${escH(p)}</a>`;
+    }).join(', ');
+    return bpLive?'<span class="muted-v">запрос…</span>':null;
   };
 
-  push('Наименование', v(sgD&&sgD.name, wkA&&wkA.name, live));
+  push('Наименование', vN([sgD&&sgD.name, wkA&&wkA.name, bpD&&bpD.name, adD&&adD.name], live));
   // Гос. участие — только для юрлиц/ИП. Для обычного физлица не показываем
-  // (ИИН считается ИП, только если найден в stat.gov.kz → sg.state==='ok').
-  const isJurOrIp = Number(_reg.bin[4]) > 3 || sg.state==='ok';
+  // (ИИН считается ИП, если найден на adata.kz или в stat.gov.kz).
+  const isJurOrIp = Number(_reg.bin[4]) > 3 || sg.state==='ok' || !!adD;
   if(isJurOrIp) push('Гос. участие', govBadge(wk));
-  if(sgD) push('Дата регистрации', v(sgD.registrationDate,null,false));
-  push('Руководитель', v(sgD&&sgD.headFullname, wkA&&wkA.head, live));
-  push('Юр. адрес', v(sgD&&sgD.legalAddress, wkA&&wkA.address, live));
+  if(sgD) push('Дата регистрации', vN([sgD.registrationDate],false));
+  push('Руководитель', vN([sgD&&sgD.headFullname, wkA&&wkA.head, bpD&&bpD.leader], live));
+  push('Юр. адрес', vN([sgD&&sgD.legalAddress, wkA&&wkA.address, bpD&&bpD.address], live));
+  push('E-mail', contacts(bpD&&bpD.emails, 'mailto:'));
+  push('Телефон', contacts(bpD&&bpD.phones, 'tel:'));
+  if(sgD&&sgD.okedPrimaryCode){
+    const nm=sgD.okedPrimaryName?` · ${escH(sgD.okedPrimaryName)}`:'';
+    push('ОКЭД (осн.)', `<span class="mono-v">${escH(sgD.okedPrimaryCode)}</span>${nm}`);
+  }
+  if(sgD) push('Форма собственности', vN([sgD.kfsName],false));
+  push('КРП', vN([sgD&&(sgD.krpWithBranchesName||sgD.krpWithoutBranchesName), bpD&&bpD.krp],false));
   if(sgD){
-    if(sgD.okedPrimaryCode){
-      const nm=sgD.okedPrimaryName?` · ${escH(sgD.okedPrimaryName)}`:'';
-      push('ОКЭД (осн.)', `<span class="mono-v">${escH(sgD.okedPrimaryCode)}</span>${nm}`);
-    }
-    push('Форма собственности', v(sgD.kfsName,null,false));
-    push('КРП', v(sgD.krpWithBranchesName||sgD.krpWithoutBranchesName,null,false));
-    push('Сектор экономики', v(sgD.sectorName,null,false));
+    push('Сектор экономики', vN([sgD.sectorName],false));
     if(sgD.kato) push('КАТО', `<span class="mono-v">${escH(sgD.kato)}</span>`);
   }
 
-  let html=`<div class="registry-hd">Реестры <span class="src">stat.gov.kz · e-Qazyna</span>${live?'<span class="reg-load"><span class="dot"></span></span>':''}</div>`;
+  let html=`<div class="registry-hd">Реестры <span class="src">stat.gov.kz · e-Qazyna · ba.prg.kz · adata.kz</span>${live?'<span class="reg-load"><span class="dot"></span></span>':''}</div>`;
   html+=rows.join('');
   if(sg.state==='err'){
     const missing = sg.error==='extension-missing' || /Расширени|установ/i.test(sg.error||'');
@@ -696,10 +1014,19 @@ $('num').addEventListener('input',e=>{
   e.target.value=e.target.value.replace(/\D/g,'').slice(0,12);
   validate();
 });
-['type','residency','gender','dob','orgstatus','reg'].forEach(id=>$(id).addEventListener('input',validate));
+['type','gender','dob','orgstatus','reg'].forEach(id=>$(id).addEventListener('input',validate));
+
+$('suggest').addEventListener('click',e=>{
+  if(e.target.closest('.sg-more')){ _sugBudget+=ADATA_STEP; if(_lastO) renderSuggest(_lastO); return; }
+  if(e.target.closest('.sg-toggle')){ _sugShowNumbers=!_sugShowNumbers; if(_lastO) renderSuggest(_lastO); return; }
+  const btn=e.target.closest('.sg-item'); if(!btn || !btn.dataset.cand) return;
+  $('num').value=btn.dataset.cand;
+  validate();
+  $('num').focus();
+});
 
 $('btn-clear').addEventListener('click',()=>{
-  ['num','residency','gender','dob','orgstatus','reg'].forEach(id=>$(id).value='');
+  ['num','gender','dob','orgstatus','reg'].forEach(id=>$(id).value='');
   $('type').value='';
   validate();
   $('num').focus();
@@ -714,7 +1041,6 @@ $('btn-fill').addEventListener('click',()=>{
     if(o.birth.valid) $('dob').value=`${o.birth.year}-${pad(o.birth.mm)}-${pad(o.birth.dd)}`;
   }else if(o.isBIN){
     $('type').value = o.entityType==='ip'?'ip':'jur';
-    $('residency').value = o.entityType==='jur_res'?'res':o.entityType==='jur_nres'?'nres':'';
     if(o.orgStatusKnown) $('orgstatus').value=String(o.orgStatusCode);
   }
   validate();
@@ -722,14 +1048,14 @@ $('btn-fill').addEventListener('click',()=>{
 
 const EX={
   fiz:   {num:'020518501477',type:'fiz',gender:'M',dob:'2002-05-18'},
-  jur:   {num:'150841000122',type:'jur',residency:'res',orgstatus:'1',reg:'2015-08-10'},
+  jur:   {num:'150841000122',type:'jur',orgstatus:'1',reg:'2015-08-10'},
   ip:    {num:'210363000128',type:'ip',orgstatus:'3',reg:'2021-03-15'},
   broken:{num:'020518501476',type:'fiz',gender:'M',dob:'2002-05-18'},
   mism:  {num:'020518501477',type:'fiz',gender:'F',dob:'2002-05-18'}
 };
 document.querySelectorAll('[data-ex]').forEach(b=>b.addEventListener('click',()=>{
   const e=EX[b.dataset.ex];
-  ['num','type','residency','gender','dob','orgstatus','reg'].forEach(id=>$(id).value=e[id]||'');
+  ['num','type','gender','dob','orgstatus','reg'].forEach(id=>$(id).value=e[id]||'');
   validate();
 }));
 
